@@ -449,6 +449,16 @@ function startEditing(cell, focusAfter) {
       return;
     }
 
+    // Validation: Remaining cannot exceed Original Estimate
+    if (prop === 'remainingWork' && item.originalEstimate !== null && newValue > item.originalEstimate) {
+      cell.textContent = fmt(originalValue);
+      setStatus(`Remaining (${fmt(newValue)}) cannot exceed Original Estimate (${fmt(item.originalEstimate)})`, 'error');
+      flash(cell, 'flash-error');
+      if (nextCell) nextCell.focus();
+      else cell.focus();
+      return;
+    }
+
     cell.textContent = fmt(newValue);
     currentState = States.SAVING;
     setStatus(`Saving ${prop} for #${itemId}...`);
