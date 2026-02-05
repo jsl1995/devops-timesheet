@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevOps Timesheet</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <!-- Header -->
+  <header id="header">
+    <h1>DevOps Timesheet</h1>
+    <div class="header-actions">
+      <button id="btn-refresh" class="icon-btn" title="Refresh">&#x21bb;</button>
+      <button id="btn-settings" class="icon-btn" title="Settings">&#x2699;</button>
+    </div>
+  </header>
+
+  <!-- Settings View -->
+  <section id="settings-view" class="view" hidden>
+    <form id="settings-form">
+      <label for="input-org">Organization</label>
+      <input type="text" id="input-org" placeholder="my-org" required>
+
+      <label for="input-project">Project</label>
+      <input type="text" id="input-project" placeholder="my-project" required>
+
+      <label for="input-pat">Personal Access Token</label>
+      <input type="password" id="input-pat" placeholder="paste your PAT" required>
+
+      <button type="submit" class="btn-primary">Save &amp; Connect</button>
+    </form>
+  </section>
+
+  <!-- Work Items View -->
+  <section id="workitems-view" class="view" hidden>
+    <div class="toolbar">
+      <select id="iteration-filter">
+        <option value="">All Iterations</option>
+      </select>
+      <span id="summary"></span>
+    </div>
+    <div class="table-wrap">
+      <table id="workitems-table">
+        <thead>
+          <tr>
+            <th class="col-id">ID</th>
+            <th class="col-type">Type</th>
+            <th class="col-title">Title</th>
+            <th class="col-state">State</th>
+            <th class="col-hours">Orig Est</th>
+            <th class="col-hours">Remaining</th>
+            <th class="col-hours">Completed</th>
+          </tr>
+        </thead>
+        <tbody id="workitems-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Error View -->
+  <section id="error-view" class="view" hidden>
+    <div class="error-content">
+      <p id="error-message"></p>
+      <button id="btn-retry" class="btn-primary">Retry</button>
+    </div>
+  </section>
+
+  <!-- Status Bar -->
+  <footer id="status-bar"></footer>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" hidden>
+    <div class="spinner"></div>
+    <span>Loading work items&hellip;</span>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
