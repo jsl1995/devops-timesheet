@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DevOps Timesheet</title>
+  <title>My DevOps Timesheet</title>
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
   <!-- Header -->
   <header id="header">
-    <h1>DevOps Timesheet</h1>
+    <h1>My DevOps Timesheet</h1>
     <div class="header-actions">
+      <button id="btn-darkmode" class="icon-btn" title="Toggle dark mode">&#x263d;</button>
       <button id="btn-refresh" class="icon-btn" title="Refresh">&#x21bb;</button>
       <button id="btn-settings" class="icon-btn" title="Settings">&#x2699;</button>
     </div>
@@ -35,27 +36,15 @@
   <!-- Work Items View -->
   <section id="workitems-view" class="view" hidden>
     <div class="toolbar">
+      <select id="type-filter">
+        <option value="">All Types</option>
+      </select>
       <select id="iteration-filter">
         <option value="">All Iterations</option>
       </select>
       <span id="summary"></span>
     </div>
-    <div class="table-wrap">
-      <table id="workitems-table">
-        <thead>
-          <tr>
-            <th class="col-id">ID</th>
-            <th class="col-type">Type</th>
-            <th class="col-title">Title</th>
-            <th class="col-state">State</th>
-            <th class="col-hours">Orig Est</th>
-            <th class="col-hours">Remaining</th>
-            <th class="col-hours">Completed</th>
-          </tr>
-        </thead>
-        <tbody id="workitems-body"></tbody>
-      </table>
-    </div>
+    <div class="card-list" id="workitems-body"></div>
   </section>
 
   <!-- Error View -->

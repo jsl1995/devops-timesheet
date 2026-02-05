@@ -7,6 +7,7 @@ const $settingsForm = document.getElementById('settings-form');
 const $inputOrg = document.getElementById('input-org');
 const $inputProject = document.getElementById('input-project');
 const $inputPat = document.getElementById('input-pat');
+const $typeFilter = document.getElementById('type-filter');
 const $iterationFilter = document.getElementById('iteration-filter');
 const $summary = document.getElementById('summary');
 const $tbody = document.getElementById('workitems-body');
@@ -14,6 +15,7 @@ const $errorMessage = document.getElementById('error-message');
 const $btnRetry = document.getElementById('btn-retry');
 const $btnRefresh = document.getElementById('btn-refresh');
 const $btnSettings = document.getElementById('btn-settings');
+const $btnDarkMode = document.getElementById('btn-darkmode');
 const $statusBar = document.getElementById('status-bar');
 const $loading = document.getElementById('loading-overlay');
 
@@ -21,6 +23,8 @@ const $loading = document.getElementById('loading-overlay');
 let config = { org: '', project: '', pat: '' };
 let workItems = [];
 let iterations = [];
+let workItemTypes = [];
+let selectedType = '';
 let selectedIteration = '';
 
 // === State Machine ===
@@ -119,6 +123,10 @@ async function loadWorkItems() {
       'System.Title',
       'System.State',
       'System.IterationPath',
+      'System.AreaPath',
+      'System.AssignedTo',
+      'System.Description',
+      'Microsoft.VSTS.Common.Priority',
       'Microsoft.VSTS.Scheduling.OriginalEstimate',
       'Microsoft.VSTS.Scheduling.RemainingWork',
       'Microsoft.VSTS.Scheduling.CompletedWork'
@@ -149,14 +157,20 @@ async function loadWorkItems() {
       title: wi.fields['System.Title'],
       state: wi.fields['System.State'],
       iteration: wi.fields['System.IterationPath'] || '',
+      areaPath: wi.fields['System.AreaPath'] || '',
+      assignedTo: wi.fields['System.AssignedTo']?.displayName || '',
+      description: wi.fields['System.Description'] || '',
+      priority: wi.fields['Microsoft.VSTS.Common.Priority'] ?? null,
       originalEstimate: wi.fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] ?? null,
       remainingWork: wi.fields['Microsoft.VSTS.Scheduling.RemainingWork'] ?? null,
       completedWork: wi.fields['Microsoft.VSTS.Scheduling.CompletedWork'] ?? null
     }));
 
-    // Extract unique iterations
+    // Extract unique iterations and types
     const iterSet = new Set(workItems.map(wi => wi.iteration).filter(Boolean));
     iterations = [...iterSet].sort();
+    const typeSet = new Set(workItems.map(wi => wi.type).filter(Boolean));
+    workItemTypes = [...typeSet].sort();
 
     transition(States.LOADED);
   } catch (err) {
@@ -187,13 +201,18 @@ async function updateField(itemId, fieldName, value) {
 }
 
 // === Rendering ===
-function renderWorkItems() {
-  // Filter by iteration
-  const filtered = selectedIteration
-    ? workItems.filter(wi => wi.iteration === selectedIteration)
-    : workItems;
+function getFiltered() {
+  let items = workItems;
+  if (selectedType) items = items.filter(wi => wi.type === selectedType);
+  if (selectedIteration) items = items.filter(wi => wi.iteration === selectedIteration);
+  return items;
+}
 
-  // Update iteration dropdown
+function renderWorkItems() {
+  const filtered = getFiltered();
+
+  // Update filter dropdowns
+  renderTypeFilter();
   renderIterationFilter();
 
   // Update summary
@@ -202,21 +221,70 @@ function renderWorkItems() {
   const totalComp = filtered.reduce((s, wi) => s + (wi.completedWork || 0), 0);
   $summary.textContent = `${filtered.length} items | Est: ${fmt(totalOrig)} | Rem: ${fmt(totalRem)} | Done: ${fmt(totalComp)}`;
 
-  // Render rows
+  // Render cards
   $tbody.innerHTML = '';
   for (const wi of filtered) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="cell-id">${wi.id}</td>
-      <td class="cell-type"><span class="type-badge ${typeBadgeClass(wi.type)}" title="${esc(wi.type)}">${typeAbbr(wi.type)}</span></td>
-      <td class="cell-title" title="${esc(wi.title)}">${esc(wi.title)}</td>
-      <td class="cell-state">${esc(wi.state)}</td>
-      <td class="cell-hours">${fmt(wi.originalEstimate)}</td>
-      <td class="cell-hours cell-editable" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.RemainingWork" data-prop="remainingWork">${fmt(wi.remainingWork)}</td>
-      <td class="cell-hours cell-editable" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.CompletedWork" data-prop="completedWork">${fmt(wi.completedWork)}</td>
+    const card = document.createElement('div');
+    card.className = 'wi-card';
+    card.dataset.id = wi.id;
+    const priorityLabel = wi.priority ? `P${wi.priority}` : '-';
+    const descPlain = wi.description ? new DOMParser().parseFromString(wi.description, 'text/html').body.textContent.trim() : '';
+    const tooltip = [
+      `#${wi.id} ${wi.title}`,
+      `State: ${wi.state}`,
+      `Type: ${wi.type}`,
+      `Priority: ${priorityLabel}`,
+      `Assigned To: ${wi.assignedTo || '-'}`,
+      `Iteration: ${wi.iteration.split('\\').pop()}`,
+      `Area: ${wi.areaPath.split('\\').pop()}`,
+      `Original: ${fmt(wi.originalEstimate)}  Remaining: ${fmt(wi.remainingWork)}  Completed: ${fmt(wi.completedWork)}`,
+      descPlain ? `\nDescription:\n${descPlain.substring(0, 300)}${descPlain.length > 300 ? '...' : ''}` : ''
+    ].filter(Boolean).join('\n');
+    card.title = tooltip;
+    card.innerHTML = `
+      <div class="wi-card-header">
+        <button class="wi-toggle" aria-expanded="false" aria-label="Expand details">&#x25b6;</button>
+        <span class="wi-id">#${wi.id}</span>
+        <span class="wi-title" title="${esc(wi.title)}">${esc(wi.title)}</span>
+      </div>
+      <div class="wi-details" hidden>
+        <div class="wi-detail-row"><span class="wi-detail-label">State</span><span class="wi-detail-value">${esc(wi.state)}</span></div>
+        <div class="wi-detail-row"><span class="wi-detail-label">Type</span><span class="wi-detail-value">${esc(wi.type)}</span></div>
+        <div class="wi-detail-row"><span class="wi-detail-label">Priority</span><span class="wi-detail-value">${priorityLabel}</span></div>
+        <div class="wi-detail-row"><span class="wi-detail-label">Assigned To</span><span class="wi-detail-value">${esc(wi.assignedTo) || '-'}</span></div>
+        <div class="wi-detail-row"><span class="wi-detail-label">Iteration</span><span class="wi-detail-value">${esc(wi.iteration.split('\\').pop())}</span></div>
+        <div class="wi-detail-row"><span class="wi-detail-label">Area</span><span class="wi-detail-value">${esc(wi.areaPath.split('\\').pop())}</span></div>
+        ${wi.description ? `<div class="wi-detail-desc"><span class="wi-detail-label">Description</span><div class="wi-detail-desc-body">${wi.description}</div></div>` : ''}
+      </div>
+      <div class="wi-fields">
+        <div class="wi-field">
+          <span class="wi-field-label">Original</span>
+          <div class="wi-field-value">${fmt(wi.originalEstimate)}</div>
+        </div>
+        <div class="wi-field">
+          <span class="wi-field-label">Remaining</span>
+          <div class="wi-field-value editable" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.RemainingWork" data-prop="remainingWork">${fmt(wi.remainingWork)}</div>
+        </div>
+        <div class="wi-field">
+          <span class="wi-field-label">Completed</span>
+          <div class="wi-field-value editable" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.CompletedWork" data-prop="completedWork">${fmt(wi.completedWork)}</div>
+        </div>
+      </div>
     `;
-    $tbody.appendChild(tr);
+    $tbody.appendChild(card);
   }
+}
+
+function renderTypeFilter() {
+  const prev = $typeFilter.value;
+  $typeFilter.innerHTML = '<option value="">All Types</option>';
+  for (const type of workItemTypes) {
+    const opt = document.createElement('option');
+    opt.value = type;
+    opt.textContent = type;
+    $typeFilter.appendChild(opt);
+  }
+  $typeFilter.value = prev || '';
 }
 
 function renderIterationFilter() {
@@ -243,32 +311,37 @@ function esc(str) {
   return d.innerHTML;
 }
 
-function typeBadgeClass(type) {
-  const t = (type || '').toLowerCase();
-  if (t === 'task') return 'task';
-  if (t === 'bug') return 'bug';
-  if (t.includes('user story') || t === 'story') return 'story';
-  if (t === 'feature') return 'feature';
-  return 'default';
-}
+// === Expand/collapse details ===
+$tbody.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.wi-toggle');
+  if (!toggle) return;
+  const card = toggle.closest('.wi-card');
+  const details = card.querySelector('.wi-details');
+  const expanded = !details.hidden;
+  details.hidden = expanded;
+  toggle.setAttribute('aria-expanded', !expanded);
+  toggle.innerHTML = expanded ? '&#x25b6;' : '&#x25bc;';
+});
 
-function typeAbbr(type) {
-  const t = (type || '').toLowerCase();
-  if (t === 'task') return 'T';
-  if (t === 'bug') return 'B';
-  if (t.includes('user story') || t === 'story') return 'S';
-  if (t === 'feature') return 'F';
-  return '?';
-}
+// === Double-click to open work item ===
+$tbody.addEventListener('dblclick', (e) => {
+  if (e.target.closest('.editable')) return;
+  const card = e.target.closest('.wi-card');
+  if (!card) return;
+  const id = card.dataset.id;
+  if (!id) return;
+  const url = `https://dev.azure.com/${encodeURIComponent(config.org)}/${encodeURIComponent(config.project)}/_workitems/edit/${id}`;
+  window.open(url, '_blank');
+});
 
 // === Inline Editing ===
 $tbody.addEventListener('click', (e) => {
-  const td = e.target.closest('td.cell-editable');
-  if (!td || td.querySelector('input') || currentState === States.SAVING) return;
+  const cell = e.target.closest('.editable');
+  if (!cell || cell.querySelector('input') || currentState === States.SAVING) return;
 
-  const itemId = Number(td.dataset.id);
-  const fieldName = td.dataset.field;
-  const prop = td.dataset.prop;
+  const itemId = Number(cell.dataset.id);
+  const fieldName = cell.dataset.field;
+  const prop = cell.dataset.prop;
   const item = workItems.find(wi => wi.id === itemId);
   if (!item) return;
 
@@ -278,8 +351,8 @@ $tbody.addEventListener('click', (e) => {
   input.step = '0.1';
   input.min = '0';
   input.value = originalValue !== null && originalValue !== undefined ? originalValue : '';
-  td.textContent = '';
-  td.appendChild(input);
+  cell.textContent = '';
+  cell.appendChild(input);
   input.focus();
   input.select();
 
@@ -292,13 +365,12 @@ $tbody.addEventListener('click', (e) => {
       return;
     }
 
-    // No change
     if (newValue === originalValue) {
       cancel();
       return;
     }
 
-    td.textContent = fmt(newValue);
+    cell.textContent = fmt(newValue);
     currentState = States.SAVING;
     setStatus(`Saving ${prop} for #${itemId}...`);
 
@@ -307,19 +379,18 @@ $tbody.addEventListener('click', (e) => {
       item[prop] = newValue;
       currentState = States.LOADED;
       setStatus(`Updated #${itemId} ${prop} to ${fmt(newValue)}`, 'success');
-      flash(td, 'flash-success');
-      // Re-render summary
+      flash(cell, 'flash-success');
       renderSummary();
     } catch (err) {
-      td.textContent = fmt(originalValue);
+      cell.textContent = fmt(originalValue);
       currentState = States.LOADED;
       setStatus(`Failed to update #${itemId}: ${err.message}`, 'error');
-      flash(td, 'flash-error');
+      flash(cell, 'flash-error');
     }
   }
 
   function cancel() {
-    td.textContent = fmt(originalValue);
+    cell.textContent = fmt(originalValue);
   }
 
   input.addEventListener('keydown', (e) => {
@@ -350,9 +421,7 @@ function flash(el, cls) {
 }
 
 function renderSummary() {
-  const filtered = selectedIteration
-    ? workItems.filter(wi => wi.iteration === selectedIteration)
-    : workItems;
+  const filtered = getFiltered();
   const totalOrig = filtered.reduce((s, wi) => s + (wi.originalEstimate || 0), 0);
   const totalRem = filtered.reduce((s, wi) => s + (wi.remainingWork || 0), 0);
   const totalComp = filtered.reduce((s, wi) => s + (wi.completedWork || 0), 0);
@@ -392,14 +461,34 @@ $btnRetry.addEventListener('click', () => {
   transition(States.LOADING);
 });
 
+// Type filter
+$typeFilter.addEventListener('change', () => {
+  selectedType = $typeFilter.value;
+  renderWorkItems();
+});
+
 // Iteration filter
 $iterationFilter.addEventListener('change', () => {
   selectedIteration = $iterationFilter.value;
   renderWorkItems();
 });
 
+// Dark mode toggle
+$btnDarkMode.addEventListener('click', async () => {
+  const dark = document.body.classList.toggle('dark');
+  $btnDarkMode.innerHTML = dark ? '&#x2600;' : '&#x263d;';
+  await chrome.storage.sync.set({ darkMode: dark });
+});
+
 // === Init ===
 async function init() {
+  // Restore dark mode preference
+  const { darkMode } = await chrome.storage.sync.get('darkMode');
+  if (darkMode) {
+    document.body.classList.add('dark');
+    $btnDarkMode.innerHTML = '&#x2600;';
+  }
+
   const data = await chrome.storage.sync.get('devopsConfig');
   if (data.devopsConfig?.org && data.devopsConfig?.pat) {
     config = data.devopsConfig;

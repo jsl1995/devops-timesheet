@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "DevOps Timesheet",
+  "name": "My DevOps Timesheet",
   "version": "1.0.0",
   "description": "View and edit Azure DevOps work item effort fields from a side panel",
   "permissions": ["sidePanel", "storage"],
@@ -12,7 +12,7 @@
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_title": "DevOps Timesheet",
+    "default_title": "My DevOps Timesheet",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
