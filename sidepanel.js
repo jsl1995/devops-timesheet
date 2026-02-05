@@ -18,6 +18,8 @@ const $btnRefresh = document.getElementById('btn-refresh');
 const $btnSettings = document.getElementById('btn-settings');
 const $searchInput = document.getElementById('search-input');
 const $btnExpandAll = document.getElementById('btn-expand-all');
+const $btnFilterToggle = document.getElementById('btn-filter-toggle');
+const $filterPanel = document.getElementById('filter-panel');
 const $btnDarkMode = document.getElementById('btn-darkmode');
 const $statusBar = document.getElementById('status-bar');
 const $loading = document.getElementById('loading-overlay');
@@ -713,7 +715,25 @@ document.addEventListener('keydown', (e) => {
       transition(States.LOADING);
     }
   }
+  
+  // F = Toggle filters
+  if (e.key === 'f' || e.key === 'F') {
+    if (currentState === States.LOADED) {
+      e.preventDefault();
+      toggleFilterPanel();
+    }
+  }
 });
+
+// Filter panel toggle
+let filtersVisible = false;
+function toggleFilterPanel() {
+  filtersVisible = !filtersVisible;
+  $filterPanel.hidden = !filtersVisible;
+  $btnFilterToggle.classList.toggle('active', filtersVisible);
+}
+
+$btnFilterToggle.addEventListener('click', toggleFilterPanel);
 
 // Settings gear
 $btnSettings.addEventListener('click', () => {
@@ -742,14 +762,25 @@ $searchInput.addEventListener('input', () => {
 // Type filter
 $typeFilter.addEventListener('change', () => {
   selectedType = $typeFilter.value;
+  updateFilterIndicator();
   renderWorkItems();
 });
 
 // Iteration filter
 $iterationFilter.addEventListener('change', () => {
   selectedIteration = $iterationFilter.value;
+  updateFilterIndicator();
   renderWorkItems();
 });
+
+// Update filter button to show indicator when filters are active
+function updateFilterIndicator() {
+  const hasFilter = selectedType || selectedIteration;
+  $btnFilterToggle.classList.toggle('has-filter', hasFilter);
+  $btnFilterToggle.title = hasFilter 
+    ? `Filters active (F) - Type: ${selectedType || 'All'}, Iteration: ${selectedIteration ? selectedIteration.split('\\').pop() : 'All'}`
+    : 'Toggle filters (F)';
+}
 
 // Expand/collapse all
 let allExpanded = false;

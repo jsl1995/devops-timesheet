@@ -107,13 +107,16 @@
     <div class="toolbar">
       <div class="toolbar-search">
         <input type="text" id="search-input" placeholder="Search by ID or title..." autocomplete="off">
+        <button id="btn-filter-toggle" class="filter-toggle-btn" title="Toggle filters (F)">&#x1F50D;</button>
       </div>
-      <select id="type-filter">
-        <option value="">All Types</option>
-      </select>
-      <select id="iteration-filter">
-        <option value="">All Iterations</option>
-      </select>
+      <div id="filter-panel" class="filter-panel" hidden>
+        <select id="type-filter">
+          <option value="">All Types</option>
+        </select>
+        <select id="iteration-filter">
+          <option value="">All Iterations</option>
+        </select>
+      </div>
       <button id="btn-expand-all" class="toolbar-btn" title="Expand all">&#x25bc; Expand All</button>
       <span id="summary"></span>
     </div>

@@ -318,10 +318,12 @@ body {
 
 .toolbar-search {
   width: 100%;
+  display: flex;
+  gap: 6px;
 }
 
 .toolbar-search input {
-  width: 100%;
+  flex: 1;
   padding: 5px 8px;
   border: 1px solid var(--border);
   border-radius: 3px;
@@ -338,6 +340,48 @@ body {
 
 .toolbar-search input::placeholder {
   color: var(--text-secondary);
+}
+
+.filter-toggle-btn {
+  position: relative;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.filter-toggle-btn:hover {
+  border-color: var(--accent);
+}
+
+.filter-toggle-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.filter-toggle-btn.has-filter::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.filter-panel {
+  width: 100%;
+  display: flex;
+  gap: 6px;
+}
+
+.filter-panel.has-filter {
+  /* Visual indicator when filters are active */
 }
 
 .toolbar select {
