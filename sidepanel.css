@@ -753,6 +753,10 @@ body.dark .toolbar-search input {
   color: var(--text);
 }
 
+body.dark .toolbar-icon-btn {
+  color: var(--text);
+}
+
 body.dark .wizard-field input {
   background: var(--bg-secondary);
   color: var(--text);
