@@ -539,6 +539,11 @@ function showWizardStep(step) {
   wizardStep = step;
   wizardSteps.forEach((el, i) => { el.hidden = i !== step; });
   $wizardBar.style.width = `${((step + 1) / totalSteps) * 100}%`;
+  // When reaching PAT step, update the link based on org input
+  if (step === 3) {
+    const org = $inputOrg.value.trim();
+    updatePatLink(org);
+  }
   // Auto-focus input on the current step
   const input = wizardSteps[step].querySelector('input');
   if (input) setTimeout(() => input.focus(), 50);
@@ -590,6 +595,19 @@ $wizard.addEventListener('keydown', (e) => {
 // URL shortcut on welcome step
 const $inputUrl = document.getElementById('input-url');
 const $urlHint = document.getElementById('url-hint');
+const $patLinkContainer = document.getElementById('pat-link-container');
+const $patLink = document.getElementById('pat-link');
+
+// Update PAT link with detected org
+function updatePatLink(org) {
+  if (org) {
+    const tokenUrl = `https://dev.azure.com/${encodeURIComponent(org)}/_usersettings/tokens`;
+    $patLink.href = tokenUrl;
+    $patLinkContainer.hidden = false;
+  } else {
+    $patLinkContainer.hidden = true;
+  }
+}
 
 function parseDevOpsUrl(raw) {
   try {
@@ -629,6 +647,8 @@ $inputUrl.addEventListener('input', () => {
     $urlHint.textContent = `Found org: ${parsed.org}${projectText}`;
     // Pre-fill and skip to PAT step (or project step if no project found)
     $inputOrg.value = parsed.org;
+    // Update the PAT link with the detected org
+    updatePatLink(parsed.org);
     if (parsed.project) {
       $inputProject.value = parsed.project;
       showWizardStep(3);
