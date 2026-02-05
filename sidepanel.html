@@ -33,6 +33,12 @@
         <div class="wizard-actions">
           <button class="btn-primary wizard-next">Get Started</button>
         </div>
+        <div class="wizard-divider"><span>or</span></div>
+        <div class="wizard-field wizard-url-field">
+          <label for="input-url">Paste your Azure DevOps URL</label>
+          <input type="url" id="input-url" placeholder="https://dev.azure.com/org/project">
+          <p class="wizard-url-hint" id="url-hint" hidden></p>
+        </div>
       </div>
 
       <!-- Step 2: Organization -->
@@ -96,6 +102,9 @@
   <!-- Work Items View -->
   <section id="workitems-view" class="view" hidden>
     <div class="toolbar">
+      <div class="toolbar-search">
+        <input type="text" id="search-input" placeholder="Search by ID or title..." autocomplete="off">
+      </div>
       <select id="type-filter">
         <option value="">All Types</option>
       </select>

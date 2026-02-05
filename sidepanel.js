@@ -16,6 +16,7 @@ const $errorMessage = document.getElementById('error-message');
 const $btnRetry = document.getElementById('btn-retry');
 const $btnRefresh = document.getElementById('btn-refresh');
 const $btnSettings = document.getElementById('btn-settings');
+const $searchInput = document.getElementById('search-input');
 const $btnExpandAll = document.getElementById('btn-expand-all');
 const $btnDarkMode = document.getElementById('btn-darkmode');
 const $statusBar = document.getElementById('status-bar');
@@ -28,6 +29,7 @@ let iterations = [];
 let workItemTypes = [];
 let selectedType = '';
 let selectedIteration = '';
+let searchQuery = '';
 
 // === State Machine ===
 const States = { INIT: 'INIT', SETTINGS: 'SETTINGS', LOADING: 'LOADING', LOADED: 'LOADED', SAVING: 'SAVING', ERROR: 'ERROR' };
@@ -205,6 +207,13 @@ async function updateField(itemId, fieldName, value) {
 // === Rendering ===
 function getFiltered() {
   let items = workItems;
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    items = items.filter(wi =>
+      String(wi.id).includes(q) ||
+      wi.title.toLowerCase().includes(q)
+    );
+  }
   if (selectedType) items = items.filter(wi => wi.type === selectedType);
   if (selectedIteration) items = items.filter(wi => wi.iteration === selectedIteration);
   return items;
@@ -227,7 +236,8 @@ function renderWorkItems() {
   $tbody.innerHTML = '';
   for (const wi of filtered) {
     const card = document.createElement('div');
-    card.className = 'wi-card';
+    const status = hoursStatus(wi);
+    card.className = 'wi-card' + (status ? ` status-${status}` : '');
     card.dataset.id = wi.id;
     const priorityLabel = wi.priority ? `P${wi.priority}` : '-';
     const descPlain = wi.description ? new DOMParser().parseFromString(wi.description, 'text/html').body.textContent.trim() : '';
@@ -265,11 +275,11 @@ function renderWorkItems() {
         </div>
         <div class="wi-field">
           <span class="wi-field-label">Remaining</span>
-          <div class="wi-field-value editable" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.RemainingWork" data-prop="remainingWork">${fmt(wi.remainingWork)}</div>
+          <div class="wi-field-value editable${status ? ` hrs-${status}` : ''}" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.RemainingWork" data-prop="remainingWork">${fmt(wi.remainingWork)}</div>
         </div>
         <div class="wi-field">
           <span class="wi-field-label">Completed</span>
-          <div class="wi-field-value editable" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.CompletedWork" data-prop="completedWork">${fmt(wi.completedWork)}</div>
+          <div class="wi-field-value editable" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.CompletedWork" data-prop="completedWork">${fmt(wi.completedWork)}</div>
         </div>
       </div>
     `;
@@ -313,6 +323,25 @@ function esc(str) {
   return d.innerHTML;
 }
 
+function hoursStatus(wi) {
+  const orig = wi.originalEstimate;
+  const rem = wi.remainingWork;
+  const comp = wi.completedWork;
+  // No estimate set
+  if (!orig && !comp && !rem) return '';
+  // Overrun: completed exceeds original, or no remaining but work incomplete
+  if (orig && comp > orig) return 'overrun';
+  if (orig && rem === 0 && comp < orig) return 'done';
+  if (orig && rem === 0 && comp >= orig) return 'done';
+  // Low: remaining is 25% or less of original
+  if (orig && rem !== null && rem > 0 && rem <= orig * 0.25) return 'low';
+  // On track
+  if (orig && rem > 0) return 'on-track';
+  // Has remaining but no estimate
+  if (!orig && rem > 0) return '';
+  return '';
+}
+
 // === Expand/collapse details ===
 $tbody.addEventListener('click', (e) => {
   const toggle = e.target.closest('.wi-toggle');
@@ -336,10 +365,49 @@ $tbody.addEventListener('dblclick', (e) => {
   window.open(url, '_blank');
 });
 
-// === Inline Editing ===
-$tbody.addEventListener('click', (e) => {
+// === Keyboard & Cell Navigation ===
+function getAllEditableCells() {
+  return [...$tbody.querySelectorAll('.editable')];
+}
+
+function getAdjacentCell(cell, direction) {
+  const cells = getAllEditableCells();
+  const idx = cells.indexOf(cell);
+  if (idx === -1) return null;
+  if (direction === 'next') return cells[idx + 1] || null;
+  if (direction === 'prev') return cells[idx - 1] || null;
+  // up/down: move by 2 (each card has 2 editable cells: remaining + completed)
+  if (direction === 'up') return cells[idx - 2] || null;
+  if (direction === 'down') return cells[idx + 2] || null;
+  return null;
+}
+
+// Keyboard navigation on focused cells
+$tbody.addEventListener('keydown', (e) => {
   const cell = e.target.closest('.editable');
-  if (!cell || cell.querySelector('input') || currentState === States.SAVING) return;
+  if (!cell || cell.querySelector('input')) return;
+
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    startEditing(cell);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    getAdjacentCell(cell, 'up')?.focus();
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    getAdjacentCell(cell, 'down')?.focus();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    getAdjacentCell(cell, 'prev')?.focus();
+  } else if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    getAdjacentCell(cell, 'next')?.focus();
+  }
+});
+
+// === Inline Editing ===
+function startEditing(cell, focusAfter) {
+  if (cell.querySelector('input') || currentState === States.SAVING) return;
 
   const itemId = Number(cell.dataset.id);
   const fieldName = cell.dataset.field;
@@ -358,17 +426,22 @@ $tbody.addEventListener('click', (e) => {
   input.focus();
   input.select();
 
-  async function save() {
+  let handled = false;
+
+  async function save(nextCell) {
+    if (handled) return;
+    handled = true;
+
     const raw = input.value.trim();
     const newValue = raw === '' ? 0 : parseFloat(raw);
 
     if (isNaN(newValue) || newValue < 0) {
-      cancel();
+      cancel(nextCell);
       return;
     }
 
     if (newValue === originalValue) {
-      cancel();
+      cancel(nextCell);
       return;
     }
 
@@ -389,29 +462,56 @@ $tbody.addEventListener('click', (e) => {
       setStatus(`Failed to update #${itemId}: ${err.message}`, 'error');
       flash(cell, 'flash-error');
     }
+
+    if (nextCell) nextCell.focus();
   }
 
-  function cancel() {
+  function cancel(nextCell) {
     cell.textContent = fmt(originalValue);
+    if (nextCell) nextCell.focus();
+    else cell.focus();
   }
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       input.removeEventListener('blur', onBlur);
-      save();
+      const next = getAdjacentCell(cell, 'next');
+      save(next);
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      input.removeEventListener('blur', onBlur);
+      const dir = e.shiftKey ? 'prev' : 'next';
+      const next = getAdjacentCell(cell, dir);
+      save(next);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       input.removeEventListener('blur', onBlur);
       cancel();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      input.removeEventListener('blur', onBlur);
+      const next = getAdjacentCell(cell, 'up');
+      save(next);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      input.removeEventListener('blur', onBlur);
+      const next = getAdjacentCell(cell, 'down');
+      save(next);
     }
   });
 
   function onBlur() {
-    save();
+    save(focusAfter || null);
   }
 
   input.addEventListener('blur', onBlur);
+}
+
+$tbody.addEventListener('click', (e) => {
+  const cell = e.target.closest('.editable');
+  if (!cell) return;
+  startEditing(cell);
 });
 
 function flash(el, cls) {
@@ -480,8 +580,65 @@ $wizard.addEventListener('click', (e) => {
 // Allow Enter key to advance wizard
 $wizard.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+    // Don't advance wizard from the URL shortcut input
+    if (e.target.id === 'input-url') return;
     e.preventDefault();
     $wizard.querySelector('.wizard-step:not([hidden]) .wizard-next')?.click();
+  }
+});
+
+// URL shortcut on welcome step
+const $inputUrl = document.getElementById('input-url');
+const $urlHint = document.getElementById('url-hint');
+
+function parseDevOpsUrl(raw) {
+  try {
+    const url = new URL(raw.trim());
+    // Format: https://dev.azure.com/org/project/...
+    if (url.hostname === 'dev.azure.com') {
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (parts.length >= 2) {
+        return { org: decodeURIComponent(parts[0]), project: decodeURIComponent(parts[1]) };
+      }
+      if (parts.length === 1) {
+        return { org: decodeURIComponent(parts[0]), project: '' };
+      }
+    }
+    // Format: https://org.visualstudio.com/project/...
+    const vsMatch = url.hostname.match(/^(.+)\.visualstudio\.com$/);
+    if (vsMatch) {
+      const parts = url.pathname.split('/').filter(Boolean);
+      const project = parts.length >= 1 ? decodeURIComponent(parts[0]) : '';
+      return { org: vsMatch[1], project };
+    }
+  } catch { /* not a valid URL */ }
+  return null;
+}
+
+$inputUrl.addEventListener('input', () => {
+  const val = $inputUrl.value.trim();
+  if (!val) {
+    $urlHint.hidden = true;
+    return;
+  }
+  const parsed = parseDevOpsUrl(val);
+  if (parsed && parsed.org) {
+    $urlHint.hidden = false;
+    $urlHint.className = 'wizard-url-hint url-success';
+    const projectText = parsed.project ? `, project: ${parsed.project}` : '';
+    $urlHint.textContent = `Found org: ${parsed.org}${projectText}`;
+    // Pre-fill and skip to PAT step (or project step if no project found)
+    $inputOrg.value = parsed.org;
+    if (parsed.project) {
+      $inputProject.value = parsed.project;
+      showWizardStep(3);
+    } else {
+      showWizardStep(2);
+    }
+  } else {
+    $urlHint.hidden = false;
+    $urlHint.className = 'wizard-url-hint url-error';
+    $urlHint.textContent = 'Could not parse URL. Try: https://dev.azure.com/org/project';
   }
 });
 
@@ -506,6 +663,16 @@ $btnSettings.addEventListener('click', () => {
 // Retry
 $btnRetry.addEventListener('click', () => {
   transition(States.LOADING);
+});
+
+// Search
+let searchTimeout;
+$searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    searchQuery = $searchInput.value.trim();
+    renderWorkItems();
+  }, 150);
 });
 
 // Type filter
