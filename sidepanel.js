@@ -601,7 +601,7 @@ const $patLink = document.getElementById('pat-link');
 // Update PAT link with detected org
 function updatePatLink(org) {
   if (org) {
-    const tokenUrl = `https://dev.azure.com/${encodeURIComponent(org)}/_usersettings/tokens`;
+    const tokenUrl = `https://dev.azure.com/${encodeURIComponent(org)}/_usersSettings/tokens`;
     $patLink.href = tokenUrl;
     $patLinkContainer.hidden = false;
   } else {
