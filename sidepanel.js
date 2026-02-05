@@ -15,6 +15,7 @@ const $errorMessage = document.getElementById('error-message');
 const $btnRetry = document.getElementById('btn-retry');
 const $btnRefresh = document.getElementById('btn-refresh');
 const $btnSettings = document.getElementById('btn-settings');
+const $btnExpandAll = document.getElementById('btn-expand-all');
 const $btnDarkMode = document.getElementById('btn-darkmode');
 const $statusBar = document.getElementById('status-bar');
 const $loading = document.getElementById('loading-overlay');
@@ -471,6 +472,20 @@ $typeFilter.addEventListener('change', () => {
 $iterationFilter.addEventListener('change', () => {
   selectedIteration = $iterationFilter.value;
   renderWorkItems();
+});
+
+// Expand/collapse all
+let allExpanded = false;
+$btnExpandAll.addEventListener('click', () => {
+  allExpanded = !allExpanded;
+  $tbody.querySelectorAll('.wi-card').forEach(card => {
+    const details = card.querySelector('.wi-details');
+    const toggle = card.querySelector('.wi-toggle');
+    details.hidden = !allExpanded;
+    toggle.setAttribute('aria-expanded', allExpanded);
+    toggle.innerHTML = allExpanded ? '&#x25bc;' : '&#x25b6;';
+  });
+  $btnExpandAll.innerHTML = allExpanded ? '&#x25b2; Collapse All' : '&#x25bc; Expand All';
 });
 
 // Dark mode toggle

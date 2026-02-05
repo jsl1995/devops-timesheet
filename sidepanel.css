@@ -142,6 +142,22 @@ body {
   min-width: 0;
 }
 
+.toolbar-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 11px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toolbar-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 #summary {
   font-size: 11px;
   color: var(--text-secondary);
