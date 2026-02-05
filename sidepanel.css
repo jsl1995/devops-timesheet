@@ -441,6 +441,33 @@ body.dark .hrs-done     { background: #152030; }
   flex-shrink: 0;
 }
 
+.wi-copy-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.wi-card:hover .wi-copy-link {
+  opacity: 0.6;
+}
+
+.wi-copy-link:hover {
+  opacity: 1 !important;
+  background: var(--bg-secondary);
+}
+
+.wi-copy-link.copied {
+  opacity: 1 !important;
+  color: var(--success);
+}
+
 .wi-title {
   font-size: 13px;
   color: var(--text);

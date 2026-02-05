@@ -253,11 +253,13 @@ function renderWorkItems() {
       descPlain ? `\nDescription:\n${descPlain.substring(0, 300)}${descPlain.length > 300 ? '...' : ''}` : ''
     ].filter(Boolean).join('\n');
     card.title = tooltip;
+    const wiUrl = `https://dev.azure.com/${encodeURIComponent(config.org)}/${encodeURIComponent(config.project)}/_workitems/edit/${wi.id}`;
     card.innerHTML = `
       <div class="wi-card-header">
         <button class="wi-toggle" aria-expanded="false" aria-label="Expand details">&#x25b6;</button>
         <span class="wi-id">#${wi.id}</span>
         <span class="wi-title" title="${esc(wi.title)}">${esc(wi.title)}</span>
+        <button class="wi-copy-link" data-url="${esc(wiUrl)}" title="Copy link (Ctrl+Click for #ID only)">&#x1F517;</button>
       </div>
       <div class="wi-details" hidden>
         <div class="wi-detail-row"><span class="wi-detail-label">State</span><span class="wi-detail-value">${esc(wi.state)}</span></div>
@@ -664,10 +666,52 @@ $inputUrl.addEventListener('input', () => {
 
 // === Event Listeners ===
 
+// Copy link button
+$tbody.addEventListener('click', (e) => {
+  const copyBtn = e.target.closest('.wi-copy-link');
+  if (!copyBtn) return;
+  e.stopPropagation();
+  
+  const url = copyBtn.dataset.url;
+  const card = copyBtn.closest('.wi-card');
+  const id = card?.dataset.id;
+  
+  // Ctrl+Click or Cmd+Click copies just the #ID
+  const textToCopy = (e.ctrlKey || e.metaKey) ? `#${id}` : url;
+  
+  navigator.clipboard.writeText(textToCopy).then(() => {
+    // Visual feedback
+    const original = copyBtn.innerHTML;
+    copyBtn.innerHTML = '&#x2713;';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      copyBtn.innerHTML = original;
+      copyBtn.classList.remove('copied');
+    }, 1000);
+    setStatus(`Copied ${(e.ctrlKey || e.metaKey) ? '#' + id : 'link'} to clipboard`, 'success');
+  }).catch(() => {
+    setStatus('Failed to copy to clipboard', 'error');
+  });
+});
+
 // Refresh
 $btnRefresh.addEventListener('click', () => {
   if (currentState === States.LOADED || currentState === States.ERROR) {
     transition(States.LOADING);
+  }
+});
+
+// Global keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Don't trigger shortcuts when typing in inputs
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  
+  // R = Refresh
+  if (e.key === 'r' || e.key === 'R') {
+    if (currentState === States.LOADED || currentState === States.ERROR) {
+      e.preventDefault();
+      transition(States.LOADING);
+    }
   }
 });
 
