@@ -21,12 +21,14 @@
 - **Side panel UI** — opens alongside your current tab, no context switching
 - **Inline editing** — click Remaining or Completed hours to update directly, saves to Azure DevOps instantly
 - **Keyboard navigation** — Tab, Shift+Tab, and arrow keys to move between editable cells
+- **Copy work item links** — hover over a card and click the 🔗 button to copy the link; Ctrl/Cmd+click copies just the #ID
 - **Expand details** — click the arrow on any card to see State, Type, Priority, Assigned To, Iteration, Area, and Description
 - **Double-click to open** — double-click a card to open the work item in Azure DevOps
 - **Search** — filter work items by ID or title
 - **Filter by type & iteration** — quickly narrow down to Tasks, Bugs, Stories, etc.
 - **Colour coding** — green/amber/red/blue indicators based on remaining hours vs estimate
 - **Dark mode** — toggle between light and dark themes, preference is saved
+- **Keyboard shortcuts** — press `R` to refresh work items
 - **Hover tooltips** — hover over any card for a quick summary of all fields
 - **PAT authentication** — securely stored in Chrome sync storage
 
@@ -87,12 +89,14 @@ Your work items will load automatically. Settings are synced across your Chrome 
 
 - **Edit hours** — click any Remaining or Completed value, type a new number, press Enter
 - **Keyboard navigation** — use Tab/Shift+Tab to move between cells, arrow keys to navigate across cards
+- **Copy link** — hover over a card to reveal the 🔗 button, click to copy the full URL to the work item
+- **Copy ID only** — Ctrl+click (Cmd+click on Mac) the 🔗 button to copy just `#12345` format
 - **Expand details** — click the triangle arrow next to the ID to reveal full work item details
 - **Expand/Collapse all** — use the toolbar button to toggle all detail panels at once
 - **Open in DevOps** — double-click a card to open it in a new tab
 - **Search** — type in the search box to filter by ID or title
 - **Filter** — use the Type and Iteration dropdowns in the toolbar
-- **Refresh** — click the refresh button in the header to reload work items
+- **Refresh** — click the refresh button in the header, or press `R`
 - **Dark mode** — click the moon/sun icon in the header
 - **Settings** — click the gear icon to change org, project, or PAT
 
