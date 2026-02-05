@@ -107,7 +107,8 @@
     <div class="toolbar">
       <div class="toolbar-search">
         <input type="text" id="search-input" placeholder="Search by ID or title..." autocomplete="off">
-        <button id="btn-filter-toggle" class="filter-toggle-btn" title="Toggle filters (F)">&#x1F50D;</button>
+        <button id="btn-filter-toggle" class="toolbar-icon-btn" title="Toggle filters (F)">&#x1F50D;</button>
+        <button id="btn-expand-all" class="toolbar-icon-btn" title="Expand all (E)">&#x25BC;</button>
       </div>
       <div id="filter-panel" class="filter-panel" hidden>
         <select id="type-filter">
@@ -117,7 +118,6 @@
           <option value="">All Iterations</option>
         </select>
       </div>
-      <button id="btn-expand-all" class="toolbar-btn" title="Expand all">&#x25bc; Expand All</button>
       <span id="summary"></span>
     </div>
     <div class="card-list" id="workitems-body"></div>

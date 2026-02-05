@@ -342,7 +342,7 @@ body {
   color: var(--text-secondary);
 }
 
-.filter-toggle-btn {
+.toolbar-icon-btn {
   position: relative;
   padding: 4px 8px;
   border: 1px solid var(--border);
@@ -354,16 +354,16 @@ body {
   transition: background 0.15s, border-color 0.15s;
 }
 
-.filter-toggle-btn:hover {
+.toolbar-icon-btn:hover {
   border-color: var(--accent);
 }
 
-.filter-toggle-btn.active {
+.toolbar-icon-btn.active {
   background: var(--accent);
   border-color: var(--accent);
 }
 
-.filter-toggle-btn.has-filter::after {
+.toolbar-icon-btn.has-filter::after {
   content: '';
   position: absolute;
   top: 2px;

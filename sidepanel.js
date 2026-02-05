@@ -723,6 +723,14 @@ document.addEventListener('keydown', (e) => {
       toggleFilterPanel();
     }
   }
+  
+  // E = Expand/collapse all
+  if (e.key === 'e' || e.key === 'E') {
+    if (currentState === States.LOADED) {
+      e.preventDefault();
+      $btnExpandAll.click();
+    }
+  }
 });
 
 // Filter panel toggle
@@ -793,7 +801,8 @@ $btnExpandAll.addEventListener('click', () => {
     toggle.setAttribute('aria-expanded', allExpanded);
     toggle.innerHTML = allExpanded ? '&#x25bc;' : '&#x25b6;';
   });
-  $btnExpandAll.innerHTML = allExpanded ? '&#x25b2; Collapse All' : '&#x25bc; Expand All';
+  $btnExpandAll.innerHTML = allExpanded ? '&#x25B2;' : '&#x25BC;';
+  $btnExpandAll.title = allExpanded ? 'Collapse all (E)' : 'Expand all (E)';
 });
 
 // Dark mode toggle
