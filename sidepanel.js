@@ -725,16 +725,51 @@ $btnExpandAll.addEventListener('click', () => {
 $btnDarkMode.addEventListener('click', async () => {
   const dark = document.body.classList.toggle('dark');
   $btnDarkMode.innerHTML = dark ? '&#x2600;' : '&#x263d;';
-  await chrome.storage.sync.set({ darkMode: dark });
+  // Save manual preference and disable auto-sync
+  await chrome.storage.sync.set({ darkMode: dark, autoTheme: false });
+});
+
+// Apply theme and update UI
+function applyTheme(dark) {
+  if (dark) {
+    document.body.classList.add('dark');
+    $btnDarkMode.innerHTML = '&#x2600;';
+  } else {
+    document.body.classList.remove('dark');
+    $btnDarkMode.innerHTML = '&#x263d;';
+  }
+}
+
+// Listen for theme changes from Azure DevOps
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.detectedTheme) {
+    // Check if auto-theme is enabled (default: true)
+    chrome.storage.sync.get({ autoTheme: true }, ({ autoTheme }) => {
+      if (autoTheme) {
+        const dark = changes.detectedTheme.newValue === 'dark';
+        applyTheme(dark);
+        // Also update the stored preference
+        chrome.storage.sync.set({ darkMode: dark });
+      }
+    });
+  }
 });
 
 // === Init ===
 async function init() {
-  // Restore dark mode preference
-  const { darkMode } = await chrome.storage.sync.get('darkMode');
-  if (darkMode) {
-    document.body.classList.add('dark');
-    $btnDarkMode.innerHTML = '&#x2600;';
+  // Check for auto-theme setting and apply accordingly
+  const { darkMode, autoTheme = true } = await chrome.storage.sync.get(['darkMode', 'autoTheme']);
+  
+  if (autoTheme) {
+    // Try to get detected theme from Azure DevOps
+    const { detectedTheme } = await chrome.storage.local.get('detectedTheme');
+    if (detectedTheme) {
+      applyTheme(detectedTheme === 'dark');
+    } else if (darkMode) {
+      applyTheme(true);
+    }
+  } else if (darkMode) {
+    applyTheme(true);
   }
 
   const data = await chrome.storage.sync.get('devopsConfig');
