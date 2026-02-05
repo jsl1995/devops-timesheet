@@ -17,20 +17,80 @@
     </div>
   </header>
 
-  <!-- Settings View -->
+  <!-- Settings View (Wizard) -->
   <section id="settings-view" class="view" hidden>
-    <form id="settings-form">
-      <label for="input-org">Organization</label>
-      <input type="text" id="input-org" placeholder="my-org" required>
+    <div id="wizard">
+      <div class="wizard-progress">
+        <div class="wizard-progress-bar" id="wizard-bar"></div>
+      </div>
 
-      <label for="input-project">Project</label>
-      <input type="text" id="input-project" placeholder="my-project" required>
+      <!-- Step 1: Welcome -->
+      <div class="wizard-step" data-step="0">
+        <div class="wizard-icon">&#x1F680;</div>
+        <h2 class="wizard-title">Welcome!</h2>
+        <p class="wizard-desc">Let's connect to your Azure DevOps project. You'll need your organization name, project name, and a Personal Access Token.</p>
+        <p class="wizard-desc wizard-desc-sub">This only takes a minute.</p>
+        <div class="wizard-actions">
+          <button class="btn-primary wizard-next">Get Started</button>
+        </div>
+      </div>
 
-      <label for="input-pat">Personal Access Token</label>
-      <input type="password" id="input-pat" placeholder="paste your PAT" required>
+      <!-- Step 2: Organization -->
+      <div class="wizard-step" data-step="1" hidden>
+        <div class="wizard-icon">&#x1F3E2;</div>
+        <h2 class="wizard-title">Organization</h2>
+        <p class="wizard-desc">Enter your Azure DevOps organization name. This is the part after <strong>dev.azure.com/</strong> in your URL.</p>
+        <div class="wizard-field">
+          <label for="input-org">Organization</label>
+          <div class="wizard-input-hint">dev.azure.com/<strong>your-org</strong></div>
+          <input type="text" id="input-org" placeholder="my-org" required>
+        </div>
+        <div class="wizard-actions">
+          <button class="btn-secondary wizard-back">Back</button>
+          <button class="btn-primary wizard-next">Next</button>
+        </div>
+      </div>
 
-      <button type="submit" class="btn-primary">Save &amp; Connect</button>
-    </form>
+      <!-- Step 3: Project -->
+      <div class="wizard-step" data-step="2" hidden>
+        <div class="wizard-icon">&#x1F4CB;</div>
+        <h2 class="wizard-title">Project</h2>
+        <p class="wizard-desc">Enter the name of the Azure DevOps project you want to track work items from.</p>
+        <div class="wizard-field">
+          <label for="input-project">Project</label>
+          <input type="text" id="input-project" placeholder="my-project" required>
+        </div>
+        <div class="wizard-actions">
+          <button class="btn-secondary wizard-back">Back</button>
+          <button class="btn-primary wizard-next">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 4: PAT -->
+      <div class="wizard-step" data-step="3" hidden>
+        <div class="wizard-icon">&#x1F511;</div>
+        <h2 class="wizard-title">Access Token</h2>
+        <p class="wizard-desc">Create a Personal Access Token (PAT) with <strong>Work Items &rarr; Read &amp; Write</strong> scope.</p>
+        <details class="wizard-help">
+          <summary>How do I create a PAT?</summary>
+          <ol>
+            <li>Go to <strong>dev.azure.com/{org}/_usersettings/tokens</strong></li>
+            <li>Click <strong>New Token</strong></li>
+            <li>Set a name and expiration date</li>
+            <li>Under Scopes, select <strong>Work Items &rarr; Read &amp; Write</strong></li>
+            <li>Click <strong>Create</strong> and copy the token</li>
+          </ol>
+        </details>
+        <div class="wizard-field">
+          <label for="input-pat">Personal Access Token</label>
+          <input type="password" id="input-pat" placeholder="Paste your PAT here" required>
+        </div>
+        <div class="wizard-actions">
+          <button class="btn-secondary wizard-back">Back</button>
+          <button class="btn-primary wizard-next">Save &amp; Connect</button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- Work Items View -->

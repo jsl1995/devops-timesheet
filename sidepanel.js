@@ -3,7 +3,8 @@ const $header = document.getElementById('header');
 const $settingsView = document.getElementById('settings-view');
 const $workitemsView = document.getElementById('workitems-view');
 const $errorView = document.getElementById('error-view');
-const $settingsForm = document.getElementById('settings-form');
+const $wizard = document.getElementById('wizard');
+const $wizardBar = document.getElementById('wizard-bar');
 const $inputOrg = document.getElementById('input-org');
 const $inputProject = document.getElementById('input-project');
 const $inputPat = document.getElementById('input-pat');
@@ -429,18 +430,62 @@ function renderSummary() {
   $summary.textContent = `${filtered.length} items | Est: ${fmt(totalOrig)} | Rem: ${fmt(totalRem)} | Done: ${fmt(totalComp)}`;
 }
 
-// === Event Listeners ===
+// === Wizard ===
+const wizardSteps = $wizard.querySelectorAll('.wizard-step');
+const totalSteps = wizardSteps.length;
+let wizardStep = 0;
 
-// Settings form
-$settingsForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
+function showWizardStep(step) {
+  wizardStep = step;
+  wizardSteps.forEach((el, i) => { el.hidden = i !== step; });
+  $wizardBar.style.width = `${((step + 1) / totalSteps) * 100}%`;
+  // Auto-focus input on the current step
+  const input = wizardSteps[step].querySelector('input');
+  if (input) setTimeout(() => input.focus(), 50);
+}
+
+function validateCurrentStep() {
+  const input = wizardSteps[wizardStep].querySelector('input');
+  if (input && !input.value.trim()) {
+    input.focus();
+    input.classList.add('shake');
+    input.addEventListener('animationend', () => input.classList.remove('shake'), { once: true });
+    return false;
+  }
+  return true;
+}
+
+async function wizardFinish() {
   config.org = $inputOrg.value.trim();
   config.project = $inputProject.value.trim();
   config.pat = $inputPat.value.trim();
-
   await chrome.storage.sync.set({ devopsConfig: config });
   transition(States.LOADING);
+}
+
+$wizard.addEventListener('click', (e) => {
+  if (e.target.closest('.wizard-next')) {
+    if (wizardStep < totalSteps - 1) {
+      if (!validateCurrentStep()) return;
+      showWizardStep(wizardStep + 1);
+    } else {
+      if (!validateCurrentStep()) return;
+      wizardFinish();
+    }
+  } else if (e.target.closest('.wizard-back')) {
+    if (wizardStep > 0) showWizardStep(wizardStep - 1);
+  }
 });
+
+// Allow Enter key to advance wizard
+$wizard.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+    e.preventDefault();
+    $wizard.querySelector('.wizard-step:not([hidden]) .wizard-next')?.click();
+  }
+});
+
+// === Event Listeners ===
 
 // Refresh
 $btnRefresh.addEventListener('click', () => {
@@ -455,6 +500,7 @@ $btnSettings.addEventListener('click', () => {
   $inputProject.value = config.project;
   $inputPat.value = config.pat;
   transition(States.SETTINGS);
+  showWizardStep(1);
 });
 
 // Retry
