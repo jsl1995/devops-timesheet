@@ -140,6 +140,66 @@
     <span>Loading work items&hellip;</span>
   </div>
 
+  <!-- Walkthrough Modal -->
+  <div id="walkthrough-overlay" hidden>
+    <div class="walkthrough-modal">
+      <button id="walkthrough-close" class="walkthrough-close-btn" title="Close">&times;</button>
+      <h2 class="walkthrough-title">&#x1F389; You're all set!</h2>
+      <p class="walkthrough-intro">Here's a quick guide to help you get the most out of your timesheet.</p>
+      
+      <div class="walkthrough-features">
+        <div class="walkthrough-feature">
+          <span class="walkthrough-feature-icon">&#x1F50D;</span>
+          <div class="walkthrough-feature-content">
+            <strong>Search &amp; Filter</strong>
+            <p>Use the search bar to find work items by ID or title. Click the magnifying glass or press <kbd>F</kbd> to toggle type and iteration filters.</p>
+          </div>
+        </div>
+        
+        <div class="walkthrough-feature">
+          <span class="walkthrough-feature-icon">&#x25BC;</span>
+          <div class="walkthrough-feature-content">
+            <strong>Expand Details</strong>
+            <p>Click the arrow on any work item to see more details like state, priority, and description. Press <kbd>E</kbd> to expand/collapse all.</p>
+          </div>
+        </div>
+        
+        <div class="walkthrough-feature">
+          <span class="walkthrough-feature-icon">&#x270F;&#xFE0F;</span>
+          <div class="walkthrough-feature-content">
+            <strong>Inline Editing</strong>
+            <p>Click on Remaining or Completed hours to edit them directly. Use arrow keys to navigate between fields.</p>
+          </div>
+        </div>
+        
+        <div class="walkthrough-feature">
+          <span class="walkthrough-feature-icon">&#x263d;</span>
+          <div class="walkthrough-feature-content">
+            <strong>Light &amp; Dark Mode</strong>
+            <p>Toggle between light and dark themes using the moon/sun icon in the header. Your preference is saved automatically.</p>
+          </div>
+        </div>
+        
+        <div class="walkthrough-feature">
+          <span class="walkthrough-feature-icon">&#x21bb;</span>
+          <div class="walkthrough-feature-content">
+            <strong>Keyboard Shortcuts</strong>
+            <p><kbd>R</kbd> Refresh &bull; <kbd>F</kbd> Filters &bull; <kbd>E</kbd> Expand all &bull; Double-click to open in DevOps</p>
+          </div>
+        </div>
+      </div>
+      
+      <button id="walkthrough-done" class="btn-primary walkthrough-done-btn">Got it!</button>
+    </div>
+  </div>
+
+  <!-- Feedback Footer -->
+  <div id="feedback-footer" hidden>
+    <a href="https://github.com/jsl1995/devops-timesheet/issues/new" target="_blank" rel="noopener">
+      Have a problem or want to request a feature? Click here
+    </a>
+  </div>
+
   <script src="sidepanel.js"></script>
 </body>
 </html>

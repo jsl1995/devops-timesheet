@@ -23,6 +23,10 @@ const $filterPanel = document.getElementById('filter-panel');
 const $btnDarkMode = document.getElementById('btn-darkmode');
 const $statusBar = document.getElementById('status-bar');
 const $loading = document.getElementById('loading-overlay');
+const $walkthroughOverlay = document.getElementById('walkthrough-overlay');
+const $walkthroughClose = document.getElementById('walkthrough-close');
+const $walkthroughDone = document.getElementById('walkthrough-done');
+const $feedbackFooter = document.getElementById('feedback-footer');
 
 // === State ===
 let config = { org: '', project: '', pat: '' };
@@ -32,6 +36,7 @@ let workItemTypes = [];
 let selectedType = '';
 let selectedIteration = '';
 let searchQuery = '';
+let showWalkthroughAfterLoad = false;
 
 // === State Machine ===
 const States = { INIT: 'INIT', SETTINGS: 'SETTINGS', LOADING: 'LOADING', LOADED: 'LOADED', SAVING: 'SAVING', ERROR: 'ERROR' };
@@ -53,6 +58,11 @@ function transition(state, data) {
     case States.LOADED:
       $loading.hidden = true;
       renderWorkItems();
+      // Show walkthrough if this is the first successful load after setup
+      if (showWalkthroughAfterLoad) {
+        showWalkthroughAfterLoad = false;
+        showWalkthrough();
+      }
       break;
     case States.SAVING:
       break;
@@ -68,6 +78,8 @@ function showView(name) {
   $settingsView.hidden = name !== 'settings';
   $workitemsView.hidden = name !== 'workitems';
   $errorView.hidden = name !== 'error';
+  // Only show feedback footer in workitems view
+  $feedbackFooter.hidden = name !== 'workitems';
 }
 
 // === Status bar ===
@@ -564,6 +576,9 @@ function showWizardStep(step) {
 }
 
 function validateCurrentStep() {
+  // Welcome step (step 0) doesn't require validation - user can proceed with either method
+  if (wizardStep === 0) return true;
+  
   const input = wizardSteps[wizardStep].querySelector('input');
   if (input && !input.value.trim()) {
     input.focus();
@@ -579,6 +594,13 @@ async function wizardFinish() {
   config.project = $inputProject.value.trim();
   config.pat = $inputPat.value.trim();
   await chrome.storage.sync.set({ devopsConfig: config });
+  
+  // Check if walkthrough has been shown before
+  const { walkthroughShown } = await chrome.storage.sync.get('walkthroughShown');
+  if (!walkthroughShown) {
+    showWalkthroughAfterLoad = true;
+  }
+  
   transition(States.LOADING);
 }
 
@@ -820,6 +842,33 @@ $btnDarkMode.addEventListener('click', async () => {
   const dark = document.body.classList.toggle('dark');
   $btnDarkMode.innerHTML = dark ? '&#x2600;' : '&#x263d;';
   await chrome.storage.sync.set({ darkMode: dark });
+});
+
+// === Walkthrough ===
+async function showWalkthrough() {
+  $walkthroughOverlay.hidden = false;
+}
+
+async function hideWalkthrough() {
+  $walkthroughOverlay.hidden = true;
+  await chrome.storage.sync.set({ walkthroughShown: true });
+}
+
+$walkthroughClose.addEventListener('click', hideWalkthrough);
+$walkthroughDone.addEventListener('click', hideWalkthrough);
+
+// Close walkthrough on overlay click (outside modal)
+$walkthroughOverlay.addEventListener('click', (e) => {
+  if (e.target === $walkthroughOverlay) {
+    hideWalkthrough();
+  }
+});
+
+// Close walkthrough on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$walkthroughOverlay.hidden) {
+    hideWalkthrough();
+  }
 });
 
 // === Init ===
