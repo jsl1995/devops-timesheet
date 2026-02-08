@@ -3,11 +3,15 @@ const $header = document.getElementById('header');
 const $settingsView = document.getElementById('settings-view');
 const $workitemsView = document.getElementById('workitems-view');
 const $errorView = document.getElementById('error-view');
+const $projectManagement = document.getElementById('project-management');
+const $projectList = document.getElementById('project-list');
+const $btnAddProject = document.getElementById('btn-add-project');
 const $wizard = document.getElementById('wizard');
 const $wizardBar = document.getElementById('wizard-bar');
 const $inputOrg = document.getElementById('input-org');
 const $inputProject = document.getElementById('input-project');
 const $inputPat = document.getElementById('input-pat');
+const $projectFilter = document.getElementById('project-filter');
 const $typeFilter = document.getElementById('type-filter');
 const $iterationFilter = document.getElementById('iteration-filter');
 const $summary = document.getElementById('summary');
@@ -29,7 +33,8 @@ const $walkthroughDone = document.getElementById('walkthrough-done');
 const $feedbackFooter = document.getElementById('feedback-footer');
 
 // === State ===
-let config = { org: '', project: '', pat: '' };
+let projects = []; // Array of { id, name, org, project, pat }
+let currentProjectId = 'all'; // 'all' or specific project id
 let workItems = [];
 let iterations = [];
 let workItemTypes = [];
@@ -94,95 +99,116 @@ function clearStatus() {
 }
 
 // === Auth header ===
-function authHeaders() {
-  const token = btoa(':' + config.pat);
+function authHeaders(project) {
+  const token = btoa(':' + project.pat);
   return {
     'Authorization': 'Basic ' + token,
     'Content-Type': 'application/json'
   };
 }
 
-function apiBase() {
-  return `https://dev.azure.com/${encodeURIComponent(config.org)}/${encodeURIComponent(config.project)}`;
+function apiBase(project) {
+  return `https://dev.azure.com/${encodeURIComponent(project.org)}/${encodeURIComponent(project.project)}`;
 }
 
 // === API: Load work items ===
 async function loadWorkItems() {
   try {
-    // Step 1: WIQL query for items assigned to me
-    const wiqlUrl = `${apiBase()}/_apis/wit/wiql?api-version=7.1`;
-    const query = `SELECT [System.Id] FROM WorkItems WHERE [System.AssignedTo] = @Me AND [System.State] NOT IN ('Closed', 'Done', 'Removed', 'Resolved') ORDER BY [System.ChangedDate] DESC`;
+    // Determine which projects to fetch from
+    const projectsToFetch = currentProjectId === 'all'
+      ? projects
+      : projects.filter(p => p.id === currentProjectId);
 
-    const wiqlRes = await fetch(wiqlUrl, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ query })
-    });
-
-    if (!wiqlRes.ok) {
-      const text = await wiqlRes.text();
-      throw new Error(`WIQL query failed (${wiqlRes.status}): ${text}`);
-    }
-
-    const wiqlData = await wiqlRes.json();
-    const ids = wiqlData.workItems?.map(wi => wi.id) || [];
-
-    if (ids.length === 0) {
+    if (projectsToFetch.length === 0) {
       workItems = [];
       iterations = [];
       transition(States.LOADED);
       return;
     }
 
-    // Step 2: Batch fetch work item details (200 at a time)
-    const fields = [
-      'System.Id',
-      'System.WorkItemType',
-      'System.Title',
-      'System.State',
-      'System.IterationPath',
-      'System.AreaPath',
-      'System.AssignedTo',
-      'System.Description',
-      'Microsoft.VSTS.Common.Priority',
-      'Microsoft.VSTS.Scheduling.OriginalEstimate',
-      'Microsoft.VSTS.Scheduling.RemainingWork',
-      'Microsoft.VSTS.Scheduling.CompletedWork'
-    ].join(',');
-
-    const batchSize = 200;
     const allItems = [];
 
-    for (let i = 0; i < ids.length; i += batchSize) {
-      const batchIds = ids.slice(i, i + batchSize).join(',');
-      const detailUrl = `${apiBase()}/_apis/wit/workitems?ids=${batchIds}&fields=${fields}&api-version=7.1`;
-      const detailRes = await fetch(detailUrl, { headers: authHeaders() });
+    // Fetch work items from each project
+    for (const project of projectsToFetch) {
+      try {
+        // Step 1: WIQL query for items assigned to me
+        const wiqlUrl = `${apiBase(project)}/_apis/wit/wiql?api-version=7.1`;
+        const query = `SELECT [System.Id] FROM WorkItems WHERE [System.AssignedTo] = @Me AND [System.State] NOT IN ('Closed', 'Done', 'Removed', 'Resolved') ORDER BY [System.ChangedDate] DESC`;
 
-      if (!detailRes.ok) {
-        const text = await detailRes.text();
-        throw new Error(`Fetch details failed (${detailRes.status}): ${text}`);
+        const wiqlRes = await fetch(wiqlUrl, {
+          method: 'POST',
+          headers: authHeaders(project),
+          body: JSON.stringify({ query })
+        });
+
+        if (!wiqlRes.ok) {
+          console.error(`WIQL query failed for ${project.name} (${wiqlRes.status})`);
+          continue; // Skip this project on error
+        }
+
+        const wiqlData = await wiqlRes.json();
+        const ids = wiqlData.workItems?.map(wi => wi.id) || [];
+
+        if (ids.length === 0) continue;
+
+        // Step 2: Batch fetch work item details (200 at a time)
+        const fields = [
+          'System.Id',
+          'System.WorkItemType',
+          'System.Title',
+          'System.State',
+          'System.IterationPath',
+          'System.AreaPath',
+          'System.AssignedTo',
+          'System.Description',
+          'Microsoft.VSTS.Common.Priority',
+          'Microsoft.VSTS.Scheduling.OriginalEstimate',
+          'Microsoft.VSTS.Scheduling.RemainingWork',
+          'Microsoft.VSTS.Scheduling.CompletedWork'
+        ].join(',');
+
+        const batchSize = 200;
+
+        for (let i = 0; i < ids.length; i += batchSize) {
+          const batchIds = ids.slice(i, i + batchSize).join(',');
+          const detailUrl = `${apiBase(project)}/_apis/wit/workitems?ids=${batchIds}&fields=${fields}&api-version=7.1`;
+          const detailRes = await fetch(detailUrl, { headers: authHeaders(project) });
+
+          if (!detailRes.ok) {
+            console.error(`Fetch details failed for ${project.name} (${detailRes.status})`);
+            continue;
+          }
+
+          const detailData = await detailRes.json();
+          const projectItems = (detailData.value || []).map(wi => ({
+            id: wi.id,
+            rev: wi.rev,
+            type: wi.fields['System.WorkItemType'],
+            title: wi.fields['System.Title'],
+            state: wi.fields['System.State'],
+            iteration: wi.fields['System.IterationPath'] || '',
+            areaPath: wi.fields['System.AreaPath'] || '',
+            assignedTo: wi.fields['System.AssignedTo']?.displayName || '',
+            description: wi.fields['System.Description'] || '',
+            priority: wi.fields['Microsoft.VSTS.Common.Priority'] ?? null,
+            originalEstimate: wi.fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] ?? null,
+            remainingWork: wi.fields['Microsoft.VSTS.Scheduling.RemainingWork'] ?? null,
+            completedWork: wi.fields['Microsoft.VSTS.Scheduling.CompletedWork'] ?? null,
+            // Add project metadata
+            projectId: project.id,
+            projectName: project.name,
+            projectOrg: project.org,
+            projectProject: project.project
+          }));
+          allItems.push(...projectItems);
+        }
+      } catch (err) {
+        console.error(`Error fetching from ${project.name}:`, err);
+        // Continue with other projects
       }
-
-      const detailData = await detailRes.json();
-      allItems.push(...(detailData.value || []));
     }
 
-    // Parse work items
-    workItems = allItems.map(wi => ({
-      id: wi.id,
-      rev: wi.rev,
-      type: wi.fields['System.WorkItemType'],
-      title: wi.fields['System.Title'],
-      state: wi.fields['System.State'],
-      iteration: wi.fields['System.IterationPath'] || '',
-      areaPath: wi.fields['System.AreaPath'] || '',
-      assignedTo: wi.fields['System.AssignedTo']?.displayName || '',
-      description: wi.fields['System.Description'] || '',
-      priority: wi.fields['Microsoft.VSTS.Common.Priority'] ?? null,
-      originalEstimate: wi.fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] ?? null,
-      remainingWork: wi.fields['Microsoft.VSTS.Scheduling.RemainingWork'] ?? null,
-      completedWork: wi.fields['Microsoft.VSTS.Scheduling.CompletedWork'] ?? null
-    }));
+    workItems = allItems;
 
     // Extract unique iterations and types
     const iterSet = new Set(workItems.map(wi => wi.iteration).filter(Boolean));
@@ -197,14 +223,15 @@ async function loadWorkItems() {
 }
 
 // === API: Update a field ===
-async function updateField(itemId, fieldName, value) {
-  const url = `https://dev.azure.com/${encodeURIComponent(config.org)}/_apis/wit/workitems/${itemId}?api-version=7.1`;
+async function updateField(itemId, fieldName, value, projectOrg, projectPat) {
+  const url = `https://dev.azure.com/${encodeURIComponent(projectOrg)}/_apis/wit/workitems/${itemId}?api-version=7.1`;
   const body = [{ op: 'replace', path: `/fields/${fieldName}`, value: value }];
 
+  const token = btoa(':' + projectPat);
   const res = await fetch(url, {
     method: 'PATCH',
     headers: {
-      'Authorization': authHeaders()['Authorization'],
+      'Authorization': 'Basic ' + token,
       'Content-Type': 'application/json-patch+json'
     },
     body: JSON.stringify(body)
@@ -237,6 +264,7 @@ function renderWorkItems() {
   const filtered = getFiltered();
 
   // Update filter dropdowns
+  renderProjectFilter();
   renderTypeFilter();
   renderIterationFilter();
 
@@ -253,10 +281,12 @@ function renderWorkItems() {
     const status = hoursStatus(wi);
     card.className = 'wi-card' + (status ? ` status-${status}` : '');
     card.dataset.id = wi.id;
+    card.dataset.projectId = wi.projectId;
     const priorityLabel = wi.priority ? `P${wi.priority}` : '-';
     const descPlain = wi.description ? new DOMParser().parseFromString(wi.description, 'text/html').body.textContent.trim() : '';
     const tooltip = [
       `#${wi.id} ${wi.title}`,
+      `Project: ${wi.projectName}`,
       `State: ${wi.state}`,
       `Type: ${wi.type}`,
       `Priority: ${priorityLabel}`,
@@ -267,15 +297,17 @@ function renderWorkItems() {
       descPlain ? `\nDescription:\n${descPlain.substring(0, 300)}${descPlain.length > 300 ? '...' : ''}` : ''
     ].filter(Boolean).join('\n');
     card.title = tooltip;
-    const wiUrl = `https://dev.azure.com/${encodeURIComponent(config.org)}/${encodeURIComponent(config.project)}/_workitems/edit/${wi.id}`;
+    const wiUrl = `https://dev.azure.com/${encodeURIComponent(wi.projectOrg)}/${encodeURIComponent(wi.projectProject)}/_workitems/edit/${wi.id}`;
     card.innerHTML = `
       <div class="wi-card-header">
         <button class="wi-toggle" aria-expanded="false" aria-label="Expand details">&#x25b6;</button>
         <span class="wi-id">#${wi.id}</span>
+        ${projects.length > 1 ? `<span class="wi-project-badge" title="${esc(wi.projectName)}">${esc(wi.projectName)}</span>` : ''}
         <span class="wi-title" title="${esc(wi.title)}">${esc(wi.title)}</span>
         <button class="wi-copy-link" data-url="${esc(wiUrl)}" title="Copy link (Ctrl+Click for #ID only)">&#x1F517;</button>
       </div>
       <div class="wi-details" hidden>
+        ${projects.length > 1 ? `<div class="wi-detail-row"><span class="wi-detail-label">Project</span><span class="wi-detail-value">${esc(wi.projectName)}</span></div>` : ''}
         <div class="wi-detail-row"><span class="wi-detail-label">State</span><span class="wi-detail-value">${esc(wi.state)}</span></div>
         <div class="wi-detail-row"><span class="wi-detail-label">Type</span><span class="wi-detail-value">${esc(wi.type)}</span></div>
         <div class="wi-detail-row"><span class="wi-detail-label">Priority</span><span class="wi-detail-value">${priorityLabel}</span></div>
@@ -291,16 +323,30 @@ function renderWorkItems() {
         </div>
         <div class="wi-field">
           <span class="wi-field-label">Remaining</span>
-          <div class="wi-field-value editable${status ? ` hrs-${status}` : ''}" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.RemainingWork" data-prop="remainingWork">${fmt(wi.remainingWork)}</div>
+          <div class="wi-field-value editable${status ? ` hrs-${status}` : ''}" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.RemainingWork" data-prop="remainingWork" data-project-org="${esc(wi.projectOrg)}" data-project-pat="${esc(wi.projectId)}">${fmt(wi.remainingWork)}</div>
         </div>
         <div class="wi-field">
           <span class="wi-field-label">Completed</span>
-          <div class="wi-field-value editable" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.CompletedWork" data-prop="completedWork">${fmt(wi.completedWork)}</div>
+          <div class="wi-field-value editable" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.CompletedWork" data-prop="completedWork" data-project-org="${esc(wi.projectOrg)}" data-project-pat="${esc(wi.projectId)}">${fmt(wi.completedWork)}</div>
         </div>
       </div>
     `;
     $tbody.appendChild(card);
   }
+}
+
+function renderProjectFilter() {
+  const prev = $projectFilter.value;
+  $projectFilter.innerHTML = '<option value="all">All Projects</option>';
+  for (const project of projects) {
+    const opt = document.createElement('option');
+    opt.value = project.id;
+    opt.textContent = project.name;
+    $projectFilter.appendChild(opt);
+  }
+  $projectFilter.value = prev || 'all';
+  // Hide project filter if only one project
+  $projectFilter.parentElement.style.display = projects.length <= 1 ? 'none' : '';
 }
 
 function renderTypeFilter() {
@@ -376,8 +422,13 @@ $tbody.addEventListener('dblclick', (e) => {
   const card = e.target.closest('.wi-card');
   if (!card) return;
   const id = card.dataset.id;
-  if (!id) return;
-  const url = `https://dev.azure.com/${encodeURIComponent(config.org)}/${encodeURIComponent(config.project)}/_workitems/edit/${id}`;
+  const projectId = card.dataset.projectId;
+  if (!id || !projectId) return;
+
+  const item = workItems.find(wi => wi.id === Number(id));
+  if (!item) return;
+
+  const url = `https://dev.azure.com/${encodeURIComponent(item.projectOrg)}/${encodeURIComponent(item.projectProject)}/_workitems/edit/${id}`;
   window.open(url, '_blank');
 });
 
@@ -428,8 +479,14 @@ function startEditing(cell, focusAfter) {
   const itemId = Number(cell.dataset.id);
   const fieldName = cell.dataset.field;
   const prop = cell.dataset.prop;
+  const projectOrg = cell.dataset.projectOrg;
+  const projectId = cell.dataset.projectPat;
   const item = workItems.find(wi => wi.id === itemId);
   if (!item) return;
+
+  // Find the project to get PAT
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
 
   const originalValue = item[prop];
   const input = document.createElement('input');
@@ -476,7 +533,7 @@ function startEditing(cell, focusAfter) {
     setStatus(`Saving ${prop} for #${itemId}...`);
 
     try {
-      await updateField(itemId, fieldName, newValue);
+      await updateField(itemId, fieldName, newValue, projectOrg, project.pat);
       item[prop] = newValue;
       currentState = States.LOADED;
       setStatus(`Updated #${itemId} ${prop} to ${fmt(newValue)}`, 'success');
@@ -557,6 +614,74 @@ function renderSummary() {
 }
 
 // === Wizard ===
+function renderProjectList() {
+  $projectList.innerHTML = '';
+  if (projects.length === 0) {
+    $projectList.innerHTML = '<p class="project-empty">No projects configured yet.</p>';
+    return;
+  }
+
+  for (const project of projects) {
+    const item = document.createElement('div');
+    item.className = 'project-item';
+    item.innerHTML = `
+      <div class="project-item-info">
+        <div class="project-item-name">${esc(project.name)}</div>
+        <div class="project-item-details">${esc(project.org)}/${esc(project.project)}</div>
+      </div>
+      <button class="project-item-delete" data-project-id="${project.id}" title="Delete project">&#x2715;</button>
+    `;
+    $projectList.appendChild(item);
+  }
+}
+
+function showProjectManagement() {
+  $projectManagement.hidden = false;
+  $wizard.hidden = true;
+  renderProjectList();
+}
+
+function showWizardForNewProject() {
+  $projectManagement.hidden = true;
+  $wizard.hidden = false;
+  $inputOrg.value = '';
+  $inputProject.value = '';
+  $inputPat.value = '';
+  showWizardStep(0);
+}
+
+// Add project button
+$btnAddProject.addEventListener('click', () => {
+  showWizardForNewProject();
+});
+
+// Delete project
+$projectList.addEventListener('click', async (e) => {
+  const deleteBtn = e.target.closest('.project-item-delete');
+  if (!deleteBtn) return;
+
+  const projectId = deleteBtn.dataset.projectId;
+  if (!confirm('Delete this project? This cannot be undone.')) return;
+
+  projects = projects.filter(p => p.id !== projectId);
+  await chrome.storage.sync.set({ devopsProjects: projects });
+
+  // If deleted the current project, reset to all
+  if (currentProjectId === projectId) {
+    currentProjectId = 'all';
+  }
+
+  renderProjectList();
+
+  // If no projects left, stay in settings
+  if (projects.length === 0) {
+    return;
+  }
+
+  // Show success message
+  setStatus('Project deleted', 'success');
+});
+
 const wizardSteps = $wizard.querySelectorAll('.wizard-step');
 const totalSteps = wizardSteps.length;
 let wizardStep = 0;
@@ -590,18 +715,36 @@ function validateCurrentStep() {
 }
 
 async function wizardFinish() {
-  config.org = $inputOrg.value.trim();
-  config.project = $inputProject.value.trim();
-  config.pat = $inputPat.value.trim();
-  await chrome.storage.sync.set({ devopsConfig: config });
-  
+  const org = $inputOrg.value.trim();
+  const project = $inputProject.value.trim();
+  const pat = $inputPat.value.trim();
+
+  // Create a new project entry
+  const newProject = {
+    id: Date.now().toString(),
+    name: project,
+    org: org,
+    project: project,
+    pat: pat
+  };
+
+  projects.push(newProject);
+  await chrome.storage.sync.set({ devopsProjects: projects });
+
   // Check if walkthrough has been shown before
   const { walkthroughShown } = await chrome.storage.sync.get('walkthroughShown');
-  if (!walkthroughShown) {
+  if (!walkthroughShown && projects.length === 1) {
     showWalkthroughAfterLoad = true;
   }
-  
-  transition(States.LOADING);
+
+  // If this is the first project, go straight to loading
+  // Otherwise show project management
+  if (projects.length === 1) {
+    transition(States.LOADING);
+  } else {
+    showProjectManagement();
+    setStatus('Project added successfully', 'success');
+  }
 }
 
 $wizard.addEventListener('click', (e) => {
@@ -775,13 +918,10 @@ function toggleFilterPanel() {
 
 $btnFilterToggle.addEventListener('click', toggleFilterPanel);
 
-// Settings gear
+// Settings gear - now opens project management
 $btnSettings.addEventListener('click', () => {
-  $inputOrg.value = config.org;
-  $inputProject.value = config.project;
-  $inputPat.value = config.pat;
   transition(States.SETTINGS);
-  showWizardStep(1);
+  showProjectManagement();
 });
 
 // Retry
@@ -797,6 +937,12 @@ $searchInput.addEventListener('input', () => {
     searchQuery = $searchInput.value.trim();
     renderWorkItems();
   }, 150);
+});
+
+// Project filter
+$projectFilter.addEventListener('change', () => {
+  currentProjectId = $projectFilter.value;
+  transition(States.LOADING);
 });
 
 // Type filter
@@ -880,11 +1026,26 @@ async function init() {
     $btnDarkMode.innerHTML = '&#x2600;';
   }
 
-  const data = await chrome.storage.sync.get('devopsConfig');
-  if (data.devopsConfig?.org && data.devopsConfig?.pat) {
-    config = data.devopsConfig;
+  // Load projects - support migration from old single project format
+  const data = await chrome.storage.sync.get(['devopsProjects', 'devopsConfig']);
+
+  if (data.devopsProjects && data.devopsProjects.length > 0) {
+    // New multi-project format
+    projects = data.devopsProjects;
+    transition(States.LOADING);
+  } else if (data.devopsConfig?.org && data.devopsConfig?.pat) {
+    // Migrate from old single-project format
+    projects = [{
+      id: Date.now().toString(),
+      name: data.devopsConfig.project || data.devopsConfig.org,
+      org: data.devopsConfig.org,
+      project: data.devopsConfig.project,
+      pat: data.devopsConfig.pat
+    }];
+    await chrome.storage.sync.set({ devopsProjects: projects });
     transition(States.LOADING);
   } else {
+    // No projects configured
     transition(States.SETTINGS);
   }
 }

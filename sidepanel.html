@@ -19,7 +19,14 @@
 
   <!-- Settings View (Wizard) -->
   <section id="settings-view" class="view" hidden>
-    <div id="wizard">
+    <!-- Project Management Section -->
+    <div id="project-management" class="project-mgmt">
+      <h2 class="project-mgmt-title">Manage Projects</h2>
+      <div id="project-list" class="project-list"></div>
+      <button id="btn-add-project" class="btn-primary">Add New Project</button>
+    </div>
+
+    <div id="wizard" hidden>
       <div class="wizard-progress">
         <div class="wizard-progress-bar" id="wizard-bar"></div>
       </div>
@@ -111,6 +118,9 @@
         <button id="btn-expand-all" class="toolbar-icon-btn" title="Expand all (E)">&#x25BC;</button>
       </div>
       <div id="filter-panel" class="filter-panel" hidden>
+        <select id="project-filter">
+          <option value="all">All Projects</option>
+        </select>
         <select id="type-filter">
           <option value="">All Types</option>
         </select>
