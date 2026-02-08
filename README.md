@@ -117,6 +117,21 @@ sidepanel.js        State machine, API calls, rendering, inline editing
 icons/              Extension icons (16, 48, 128px)
 ```
 
+## Changelog
+
+### v1.1.0
+
+- **Multi-project support** — connect multiple Azure DevOps projects and view work items from all of them in one place
+- **Project filter** — filter work items by project using the new toolbar dropdown, or select "All Projects" to see everything
+- **Project badges** — each work item card now shows which project it belongs to
+- **Project management UI** — add and delete projects from within the extension
+- **Back to Projects navigation** — easily return to project management from the wizard
+- **Migration support** — existing single-project setups are automatically migrated to the new multi-project format
+
+### v1.0.0
+
+- Initial release
+
 ## License
 
 MIT
