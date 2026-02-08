@@ -346,7 +346,7 @@ function renderProjectFilter() {
   }
   $projectFilter.value = prev || 'all';
   // Hide project filter if only one project
-  $projectFilter.parentElement.style.display = projects.length <= 1 ? 'none' : '';
+  $projectFilter.style.display = projects.length <= 1 ? 'none' : '';
 }
 
 function renderTypeFilter() {
@@ -648,6 +648,11 @@ function showWizardForNewProject() {
   $inputProject.value = '';
   $inputPat.value = '';
   showWizardStep(0);
+  // Show back button on welcome step if there are existing projects
+  const $backBtn = document.getElementById('wizard-back-to-projects');
+  if ($backBtn) {
+    $backBtn.hidden = projects.length === 0;
+  }
 }
 
 // Add project button
@@ -757,7 +762,12 @@ $wizard.addEventListener('click', (e) => {
       wizardFinish();
     }
   } else if (e.target.closest('.wizard-back')) {
-    if (wizardStep > 0) showWizardStep(wizardStep - 1);
+    // If on first step and we have existing projects, go back to project management
+    if (wizardStep === 0 && projects.length > 0) {
+      showProjectManagement();
+    } else if (wizardStep > 0) {
+      showWizardStep(wizardStep - 1);
+    }
   }
 });
 
