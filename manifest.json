@@ -5,6 +5,9 @@
   "description": "View and edit Azure DevOps work item effort fields from a side panel",
   "permissions": ["sidePanel", "storage"],
   "host_permissions": ["https://dev.azure.com/*"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "background": {
     "service_worker": "background.js"
   },
