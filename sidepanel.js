@@ -314,7 +314,7 @@ function renderWorkItems() {
         <div class="wi-detail-row"><span class="wi-detail-label">Assigned To</span><span class="wi-detail-value">${esc(wi.assignedTo) || '-'}</span></div>
         <div class="wi-detail-row"><span class="wi-detail-label">Iteration</span><span class="wi-detail-value">${esc(wi.iteration.split('\\').pop())}</span></div>
         <div class="wi-detail-row"><span class="wi-detail-label">Area</span><span class="wi-detail-value">${esc(wi.areaPath.split('\\').pop())}</span></div>
-        ${wi.description ? `<div class="wi-detail-desc"><span class="wi-detail-label">Description</span><div class="wi-detail-desc-body">${wi.description}</div></div>` : ''}
+        ${wi.description ? `<div class="wi-detail-desc"><span class="wi-detail-label">Description</span><div class="wi-detail-desc-body">${sanitizeHtml(wi.description)}</div></div>` : ''}
       </div>
       <div class="wi-fields">
         <div class="wi-field">
@@ -323,11 +323,11 @@ function renderWorkItems() {
         </div>
         <div class="wi-field">
           <span class="wi-field-label">Remaining</span>
-          <div class="wi-field-value editable${status ? ` hrs-${status}` : ''}" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.RemainingWork" data-prop="remainingWork" data-project-org="${esc(wi.projectOrg)}" data-project-pat="${esc(wi.projectId)}">${fmt(wi.remainingWork)}</div>
+          <div class="wi-field-value editable${status ? ` hrs-${status}` : ''}" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.RemainingWork" data-prop="remainingWork" data-project-org="${esc(wi.projectOrg)}" data-project-id="${esc(wi.projectId)}">${fmt(wi.remainingWork)}</div>
         </div>
         <div class="wi-field">
           <span class="wi-field-label">Completed</span>
-          <div class="wi-field-value editable" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.CompletedWork" data-prop="completedWork" data-project-org="${esc(wi.projectOrg)}" data-project-pat="${esc(wi.projectId)}">${fmt(wi.completedWork)}</div>
+          <div class="wi-field-value editable" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.CompletedWork" data-prop="completedWork" data-project-org="${esc(wi.projectOrg)}" data-project-id="${esc(wi.projectId)}">${fmt(wi.completedWork)}</div>
         </div>
       </div>
     `;
@@ -383,6 +383,64 @@ function esc(str) {
   const d = document.createElement('div');
   d.textContent = str || '';
   return d.innerHTML;
+}
+
+// Allowed tags and attributes for description HTML from Azure DevOps
+const ALLOWED_TAGS = new Set([
+  'p', 'br', 'b', 'i', 'em', 'strong', 'u', 's', 'strike',
+  'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'table', 'thead', 'tbody', 'tr', 'th', 'td',
+  'blockquote', 'pre', 'code', 'span', 'div', 'img', 'hr',
+  'sub', 'sup', 'dl', 'dt', 'dd'
+]);
+const ALLOWED_ATTRS = {
+  'a': new Set(['href', 'title']),
+  'img': new Set(['src', 'alt', 'width', 'height']),
+  'td': new Set(['colspan', 'rowspan']),
+  'th': new Set(['colspan', 'rowspan']),
+  '*': new Set(['class'])
+};
+
+function sanitizeHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  sanitizeNode(doc.body);
+  return doc.body.innerHTML;
+}
+
+function sanitizeNode(node) {
+  const children = [...node.childNodes];
+  for (const child of children) {
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      const tag = child.tagName.toLowerCase();
+      if (!ALLOWED_TAGS.has(tag)) {
+        // Replace disallowed element with its text content
+        child.replaceWith(document.createTextNode(child.textContent));
+        continue;
+      }
+      // Remove disallowed attributes
+      const allowedForTag = ALLOWED_ATTRS[tag] || new Set();
+      const allowedGlobal = ALLOWED_ATTRS['*'] || new Set();
+      for (const attr of [...child.attributes]) {
+        if (!allowedForTag.has(attr.name) && !allowedGlobal.has(attr.name)) {
+          child.removeAttribute(attr.name);
+        }
+      }
+      // Sanitize href and src to prevent javascript: URLs
+      if (child.hasAttribute('href')) {
+        const href = child.getAttribute('href');
+        if (!/^https?:\/\//i.test(href) && !/^mailto:/i.test(href)) {
+          child.removeAttribute('href');
+        }
+      }
+      if (child.hasAttribute('src')) {
+        const src = child.getAttribute('src');
+        if (!/^https?:\/\//i.test(src) && !/^data:image\//i.test(src)) {
+          child.removeAttribute('src');
+        }
+      }
+      sanitizeNode(child);
+    }
+  }
 }
 
 function hoursStatus(wi) {
@@ -480,7 +538,7 @@ function startEditing(cell, focusAfter) {
   const fieldName = cell.dataset.field;
   const prop = cell.dataset.prop;
   const projectOrg = cell.dataset.projectOrg;
-  const projectId = cell.dataset.projectPat;
+  const projectId = cell.dataset.projectId;
   const item = workItems.find(wi => wi.id === itemId);
   if (!item) return;
 
