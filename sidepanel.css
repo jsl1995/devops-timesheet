@@ -1,6 +1,15 @@
 /* === Reset & Base === */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-[hidden] { display: none !important; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
 
 :root {
   --accent: #0078d4;
@@ -85,13 +94,14 @@ body {
 .project-mgmt-title {
   font-size: 20px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   color: var(--text);
 }
 
-.project-mgmt-back {
-  width: 100%;
-  margin-top: 8px;
+.project-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
 }
 
 .project-list {
@@ -116,11 +126,13 @@ body {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 6px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
 }
 
 .project-item:hover {
   border-color: var(--accent);
+  background: rgba(0, 120, 212, 0.05);
 }
 
 .project-item-info {
@@ -278,9 +290,21 @@ body {
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-4px); }
-  40%, 80% { transform: translateX(4px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
 }
 
 .wizard-field input.shake {
@@ -526,21 +550,54 @@ body {
 }
 
 /* Hour status - card left border */
-.wi-card.status-on-track { border-left: 3px solid #107c10; }
-.wi-card.status-low       { border-left: 3px solid #d48c00; }
-.wi-card.status-overrun   { border-left: 3px solid #d13438; }
-.wi-card.status-done      { border-left: 3px solid var(--accent); }
+.wi-card.status-on-track {
+  border-left: 3px solid #107c10;
+}
+
+.wi-card.status-low {
+  border-left: 3px solid #d48c00;
+}
+
+.wi-card.status-overrun {
+  border-left: 3px solid #d13438;
+}
+
+.wi-card.status-done {
+  border-left: 3px solid var(--accent);
+}
 
 /* Hour status - remaining cell tint */
-.hrs-on-track { background: #e8f5e8; }
-.hrs-low      { background: #fef3e0; }
-.hrs-overrun  { background: #fde7e9; }
-.hrs-done     { background: #e0ecf7; }
+.hrs-on-track {
+  background: #e8f5e8;
+}
 
-body.dark .hrs-on-track { background: #1a2e1a; }
-body.dark .hrs-low      { background: #2e2510; }
-body.dark .hrs-overrun  { background: #2e1416; }
-body.dark .hrs-done     { background: #152030; }
+.hrs-low {
+  background: #fef3e0;
+}
+
+.hrs-overrun {
+  background: #fde7e9;
+}
+
+.hrs-done {
+  background: #e0ecf7;
+}
+
+body.dark .hrs-on-track {
+  background: #1a2e1a;
+}
+
+body.dark .hrs-low {
+  background: #2e2510;
+}
+
+body.dark .hrs-overrun {
+  background: #2e1416;
+}
+
+body.dark .hrs-done {
+  background: #152030;
+}
 
 .wi-card-header {
   display: flex;
@@ -745,13 +802,23 @@ body.dark .hrs-done     { background: #152030; }
 
 /* Flash animations */
 @keyframes flash-green {
-  0%   { background: #dff6dd; }
-  100% { background: var(--bg-secondary); }
+  0% {
+    background: #dff6dd;
+  }
+
+  100% {
+    background: var(--bg-secondary);
+  }
 }
 
 @keyframes flash-red {
-  0%   { background: #fde7e9; }
-  100% { background: var(--bg-secondary); }
+  0% {
+    background: #fde7e9;
+  }
+
+  100% {
+    background: var(--bg-secondary);
+  }
 }
 
 .flash-success {
@@ -826,7 +893,9 @@ body.dark .hrs-done     { background: #152030; }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* === Dark Mode === */

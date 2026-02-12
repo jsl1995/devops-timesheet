@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My DevOps Timesheet</title>
   <link rel="stylesheet" href="sidepanel.css">
 </head>
+
 <body>
   <!-- Header -->
   <header id="header">
@@ -22,9 +24,9 @@
     <!-- Project Management Section -->
     <div id="project-management" class="project-mgmt">
       <h2 class="project-mgmt-title">Manage Projects</h2>
+      <p class="project-hint">Click a project to open its timesheet</p>
       <div id="project-list" class="project-list"></div>
       <button id="btn-add-project" class="btn-primary">Add New Project</button>
-      <button id="btn-back-to-workitems" class="btn-secondary project-mgmt-back" hidden aria-label="Back to work items">&#x2190; Back</button>
     </div>
 
     <div id="wizard" hidden>
@@ -36,7 +38,8 @@
       <div class="wizard-step" data-step="0">
         <div class="wizard-icon">&#x1F680;</div>
         <h2 class="wizard-title">Welcome!</h2>
-        <p class="wizard-desc">Let's connect to your Azure DevOps project. You'll need your organization name, project name, and a Personal Access Token.</p>
+        <p class="wizard-desc">Let's connect to your Azure DevOps project. You'll need your organization name, project
+          name, and a Personal Access Token.</p>
         <p class="wizard-desc wizard-desc-sub">This only takes a minute.</p>
         <div class="wizard-actions">
           <button class="btn-secondary wizard-back" id="wizard-back-to-projects" hidden>Back to Projects</button>
@@ -54,7 +57,8 @@
       <div class="wizard-step" data-step="1" hidden>
         <div class="wizard-icon">&#x1F3E2;</div>
         <h2 class="wizard-title">Organization</h2>
-        <p class="wizard-desc">Enter your Azure DevOps organization name. This is the part after <strong>dev.azure.com/</strong> in your URL.</p>
+        <p class="wizard-desc">Enter your Azure DevOps organization name. This is the part after
+          <strong>dev.azure.com/</strong> in your URL.</p>
         <div class="wizard-field">
           <label for="input-org">Organization</label>
           <div class="wizard-input-hint">dev.azure.com/<strong>your-org</strong></div>
@@ -85,9 +89,11 @@
       <div class="wizard-step" data-step="3" hidden>
         <div class="wizard-icon">&#x1F511;</div>
         <h2 class="wizard-title">Access Token</h2>
-        <p class="wizard-desc">Create a Personal Access Token (PAT) with <strong>Work Items &rarr; Read &amp; Write</strong> scope.</p>
+        <p class="wizard-desc">Create a Personal Access Token (PAT) with <strong>Work Items &rarr; Read &amp;
+            Write</strong> scope.</p>
         <p class="wizard-pat-link" id="pat-link-container" hidden>
-          <a id="pat-link" href="#" target="_blank" rel="noopener">&#x1F517; Open Token Settings for your organization</a>
+          <a id="pat-link" href="#" target="_blank" rel="noopener">&#x1F517; Open Token Settings for your
+            organization</a>
         </p>
         <details class="wizard-help">
           <summary>How do I create a PAT?</summary>
@@ -158,49 +164,54 @@
       <button id="walkthrough-close" class="walkthrough-close-btn" title="Close">&times;</button>
       <h2 class="walkthrough-title">&#x1F389; You're all set!</h2>
       <p class="walkthrough-intro">Here's a quick guide to help you get the most out of your timesheet.</p>
-      
+
       <div class="walkthrough-features">
         <div class="walkthrough-feature">
           <span class="walkthrough-feature-icon">&#x1F50D;</span>
           <div class="walkthrough-feature-content">
             <strong>Search &amp; Filter</strong>
-            <p>Use the search bar to find work items by ID or title. Click the magnifying glass or press <kbd>F</kbd> to toggle type and iteration filters.</p>
+            <p>Use the search bar to find work items by ID or title. Click the magnifying glass or press <kbd>F</kbd> to
+              toggle type and iteration filters.</p>
           </div>
         </div>
-        
+
         <div class="walkthrough-feature">
           <span class="walkthrough-feature-icon">&#x25BC;</span>
           <div class="walkthrough-feature-content">
             <strong>Expand Details</strong>
-            <p>Click the arrow on any work item to see more details like state, priority, and description. Press <kbd>E</kbd> to expand/collapse all.</p>
+            <p>Click the arrow on any work item to see more details like state, priority, and description. Press
+              <kbd>E</kbd> to expand/collapse all.</p>
           </div>
         </div>
-        
+
         <div class="walkthrough-feature">
           <span class="walkthrough-feature-icon">&#x270F;&#xFE0F;</span>
           <div class="walkthrough-feature-content">
             <strong>Inline Editing</strong>
-            <p>Click on Remaining or Completed hours to edit them directly. Use arrow keys to navigate between fields.</p>
+            <p>Click on Remaining or Completed hours to edit them directly. Use arrow keys to navigate between fields.
+            </p>
           </div>
         </div>
-        
+
         <div class="walkthrough-feature">
           <span class="walkthrough-feature-icon">&#x263d;</span>
           <div class="walkthrough-feature-content">
             <strong>Light &amp; Dark Mode</strong>
-            <p>Toggle between light and dark themes using the moon/sun icon in the header. Your preference is saved automatically.</p>
+            <p>Toggle between light and dark themes using the moon/sun icon in the header. Your preference is saved
+              automatically.</p>
           </div>
         </div>
-        
+
         <div class="walkthrough-feature">
           <span class="walkthrough-feature-icon">&#x21bb;</span>
           <div class="walkthrough-feature-content">
             <strong>Keyboard Shortcuts</strong>
-            <p><kbd>R</kbd> Refresh &bull; <kbd>F</kbd> Filters &bull; <kbd>E</kbd> Expand all &bull; Double-click to open in DevOps</p>
+            <p><kbd>R</kbd> Refresh &bull; <kbd>F</kbd> Filters &bull; <kbd>E</kbd> Expand all &bull; Double-click to
+              open in DevOps</p>
           </div>
         </div>
       </div>
-      
+
       <button id="walkthrough-done" class="btn-primary walkthrough-done-btn">Got it!</button>
     </div>
   </div>
@@ -214,4 +225,5 @@
 
   <script src="sidepanel.js"></script>
 </body>
+
 </html>

@@ -6,7 +6,6 @@ const $errorView = document.getElementById('error-view');
 const $projectManagement = document.getElementById('project-management');
 const $projectList = document.getElementById('project-list');
 const $btnAddProject = document.getElementById('btn-add-project');
-const $btnBackToWorkitems = document.getElementById('btn-back-to-workitems');
 const $wizard = document.getElementById('wizard');
 const $wizardBar = document.getElementById('wizard-bar');
 const $inputOrg = document.getElementById('input-org');
@@ -683,6 +682,7 @@ function renderProjectList() {
   for (const project of projects) {
     const item = document.createElement('div');
     item.className = 'project-item';
+    item.dataset.projectId = project.id;
     item.innerHTML = `
       <div class="project-item-info">
         <div class="project-item-name">${esc(project.name)}</div>
@@ -698,8 +698,6 @@ function showProjectManagement() {
   $projectManagement.hidden = false;
   $wizard.hidden = true;
   renderProjectList();
-  // Show back button only if there are projects to go back to
-  $btnBackToWorkitems.hidden = projects.length === 0;
 }
 
 function showWizardForNewProject() {
@@ -724,28 +722,39 @@ $btnAddProject.addEventListener('click', () => {
 // Delete project
 $projectList.addEventListener('click', async (e) => {
   const deleteBtn = e.target.closest('.project-item-delete');
-  if (!deleteBtn) return;
+  if (deleteBtn) {
+    const projectId = deleteBtn.dataset.projectId;
+    if (!confirm('Delete this project? This cannot be undone.')) return;
 
-  const projectId = deleteBtn.dataset.projectId;
-  if (!confirm('Delete this project? This cannot be undone.')) return;
+    projects = projects.filter(p => p.id !== projectId);
+    await chrome.storage.sync.set({ devopsProjects: projects });
 
-  projects = projects.filter(p => p.id !== projectId);
-  await chrome.storage.sync.set({ devopsProjects: projects });
+    // If deleted the current project, reset to all
+    if (currentProjectId === projectId) {
+      currentProjectId = 'all';
+    }
 
-  // If deleted the current project, reset to all
-  if (currentProjectId === projectId) {
-    currentProjectId = 'all';
-  }
+    renderProjectList();
 
-  renderProjectList();
+    // If no projects left, stay in settings
+    if (projects.length === 0) {
+      return;
+    }
 
-  // If no projects left, stay in settings
-  if (projects.length === 0) {
+    // Show success message
+    setStatus('Project deleted', 'success');
     return;
   }
 
-  // Show success message
-  setStatus('Project deleted', 'success');
+  // Click on project item to open timesheet for that project
+  const projectItem = e.target.closest('.project-item');
+  if (projectItem) {
+    const projectId = projectItem.dataset.projectId;
+    if (projectId) {
+      currentProjectId = projectId;
+      transition(States.LOADING);
+    }
+  }
 });
 
 const wizardSteps = $wizard.querySelectorAll('.wizard-step');
@@ -769,7 +778,7 @@ function showWizardStep(step) {
 function validateCurrentStep() {
   // Welcome step (step 0) doesn't require validation - user can proceed with either method
   if (wizardStep === 0) return true;
-  
+
   const input = wizardSteps[wizardStep].querySelector('input');
   if (input && !input.value.trim()) {
     input.focus();
@@ -919,14 +928,14 @@ $tbody.addEventListener('click', (e) => {
   const copyBtn = e.target.closest('.wi-copy-link');
   if (!copyBtn) return;
   e.stopPropagation();
-  
+
   const url = copyBtn.dataset.url;
   const card = copyBtn.closest('.wi-card');
   const id = card?.dataset.id;
-  
+
   // Ctrl+Click or Cmd+Click copies just the #ID
   const textToCopy = (e.ctrlKey || e.metaKey) ? `#${id}` : url;
-  
+
   navigator.clipboard.writeText(textToCopy).then(() => {
     // Visual feedback
     const original = copyBtn.innerHTML;
@@ -953,7 +962,7 @@ $btnRefresh.addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
   // Don't trigger shortcuts when typing in inputs
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  
+
   // R = Refresh
   if (e.key === 'r' || e.key === 'R') {
     if (currentState === States.LOADED || currentState === States.ERROR) {
@@ -961,7 +970,7 @@ document.addEventListener('keydown', (e) => {
       transition(States.LOADING);
     }
   }
-  
+
   // F = Toggle filters
   if (e.key === 'f' || e.key === 'F') {
     if (currentState === States.LOADED) {
@@ -969,7 +978,7 @@ document.addEventListener('keydown', (e) => {
       toggleFilterPanel();
     }
   }
-  
+
   // E = Expand/collapse all
   if (e.key === 'e' || e.key === 'E') {
     if (currentState === States.LOADED) {
@@ -995,10 +1004,7 @@ $btnSettings.addEventListener('click', () => {
   showProjectManagement();
 });
 
-// Back button from project management to work items
-$btnBackToWorkitems.addEventListener('click', () => {
-  transition(States.LOADING);
-});
+
 
 // Retry
 $btnRetry.addEventListener('click', () => {
@@ -1039,7 +1045,7 @@ $iterationFilter.addEventListener('change', () => {
 function updateFilterIndicator() {
   const hasFilter = selectedType || selectedIteration;
   $btnFilterToggle.classList.toggle('has-filter', hasFilter);
-  $btnFilterToggle.title = hasFilter 
+  $btnFilterToggle.title = hasFilter
     ? `Filters active (F) - Type: ${selectedType || 'All'}, Iteration: ${selectedIteration ? selectedIteration.split('\\').pop() : 'All'}`
     : 'Toggle filters (F)';
 }
