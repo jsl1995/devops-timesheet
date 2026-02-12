@@ -89,6 +89,11 @@ body {
   color: var(--text);
 }
 
+.project-mgmt-back {
+  width: 100%;
+  margin-top: 8px;
+}
+
 .project-list {
   display: flex;
   flex-direction: column;

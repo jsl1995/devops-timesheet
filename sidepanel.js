@@ -6,6 +6,7 @@ const $errorView = document.getElementById('error-view');
 const $projectManagement = document.getElementById('project-management');
 const $projectList = document.getElementById('project-list');
 const $btnAddProject = document.getElementById('btn-add-project');
+const $btnBackToWorkitems = document.getElementById('btn-back-to-workitems');
 const $wizard = document.getElementById('wizard');
 const $wizardBar = document.getElementById('wizard-bar');
 const $inputOrg = document.getElementById('input-org');
@@ -639,6 +640,8 @@ function showProjectManagement() {
   $projectManagement.hidden = false;
   $wizard.hidden = true;
   renderProjectList();
+  // Show back button only if there are projects to go back to
+  $btnBackToWorkitems.hidden = projects.length === 0;
 }
 
 function showWizardForNewProject() {
@@ -932,6 +935,11 @@ $btnFilterToggle.addEventListener('click', toggleFilterPanel);
 $btnSettings.addEventListener('click', () => {
   transition(States.SETTINGS);
   showProjectManagement();
+});
+
+// Back button from project management to work items
+$btnBackToWorkitems.addEventListener('click', () => {
+  transition(States.LOADING);
 });
 
 // Retry
