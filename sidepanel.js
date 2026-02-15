@@ -280,9 +280,15 @@ function renderWorkItems() {
     const card = document.createElement('div');
     const status = hoursStatus(wi);
     card.className = 'wi-card' + (status ? ` status-${status}` : '');
-    card.dataset.id = wi.id;
+    // Ensure work item ID is a safe integer before using in HTML
+    const safeId = Number.isInteger(wi.id) ? wi.id : parseInt(wi.id, 10);
+    if (isNaN(safeId)) {
+      console.warn('Skipping work item with invalid ID:', wi.id);
+      continue;
+    }
+    card.dataset.id = safeId;
     card.dataset.projectId = wi.projectId;
-    const priorityLabel = wi.priority ? `P${wi.priority}` : '-';
+    const priorityLabel = wi.priority && Number.isInteger(wi.priority) ? `P${wi.priority}` : '-';
     const descPlain = wi.description ? new DOMParser().parseFromString(wi.description, 'text/html').body.textContent.trim() : '';
     const tooltip = [
       `#${wi.id} ${wi.title}`,
@@ -297,11 +303,11 @@ function renderWorkItems() {
       descPlain ? `\nDescription:\n${descPlain.substring(0, 300)}${descPlain.length > 300 ? '...' : ''}` : ''
     ].filter(Boolean).join('\n');
     card.title = tooltip;
-    const wiUrl = `https://dev.azure.com/${encodeURIComponent(wi.projectOrg)}/${encodeURIComponent(wi.projectProject)}/_workitems/edit/${wi.id}`;
+    const wiUrl = `https://dev.azure.com/${encodeURIComponent(wi.projectOrg)}/${encodeURIComponent(wi.projectProject)}/_workitems/edit/${safeId}`;
     card.innerHTML = `
       <div class="wi-card-header">
         <button class="wi-toggle" aria-expanded="false" aria-label="Expand details">&#x25b6;</button>
-        <span class="wi-id">#${wi.id}</span>
+        <span class="wi-id">#${safeId}</span>
         ${projects.length > 1 ? `<span class="wi-project-badge" title="${esc(wi.projectName)}">${esc(wi.projectName)}</span>` : ''}
         <span class="wi-title" title="${esc(wi.title)}">${esc(wi.title)}</span>
         <button class="wi-copy-link" data-url="${esc(wiUrl)}" title="Copy link (Ctrl+Click for #ID only)">&#x1F517;</button>
@@ -323,11 +329,11 @@ function renderWorkItems() {
         </div>
         <div class="wi-field">
           <span class="wi-field-label">Remaining</span>
-          <div class="wi-field-value editable${status ? ` hrs-${status}` : ''}" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.RemainingWork" data-prop="remainingWork" data-project-org="${esc(wi.projectOrg)}" data-project-id="${esc(wi.projectId)}">${fmt(wi.remainingWork)}</div>
+          <div class="wi-field-value editable${status ? ` hrs-${status}` : ''}" tabindex="0" data-id="${safeId}" data-field="Microsoft.VSTS.Scheduling.RemainingWork" data-prop="remainingWork" data-project-org="${esc(wi.projectOrg)}" data-project-id="${esc(wi.projectId)}">${fmt(wi.remainingWork)}</div>
         </div>
         <div class="wi-field">
           <span class="wi-field-label">Completed</span>
-          <div class="wi-field-value editable" tabindex="0" data-id="${wi.id}" data-field="Microsoft.VSTS.Scheduling.CompletedWork" data-prop="completedWork" data-project-org="${esc(wi.projectOrg)}" data-project-id="${esc(wi.projectId)}">${fmt(wi.completedWork)}</div>
+          <div class="wi-field-value editable" tabindex="0" data-id="${safeId}" data-field="Microsoft.VSTS.Scheduling.CompletedWork" data-prop="completedWork" data-project-org="${esc(wi.projectOrg)}" data-project-id="${esc(wi.projectId)}">${fmt(wi.completedWork)}</div>
         </div>
       </div>
     `;
@@ -434,7 +440,10 @@ function sanitizeNode(node) {
       }
       if (child.hasAttribute('src')) {
         const src = child.getAttribute('src');
-        if (!/^https?:\/\//i.test(src) && !/^data:image\//i.test(src)) {
+        // Allow https URLs and safe raster data URIs, block SVG data URIs (XSS risk)
+        const isHttps = /^https?:\/\//i.test(src);
+        const isSafeDataImage = /^data:image\/(?!svg)/i.test(src);
+        if (!isHttps && !isSafeDataImage) {
           child.removeAttribute('src');
         }
       }
@@ -688,7 +697,7 @@ function renderProjectList() {
         <div class="project-item-name">${esc(project.name)}</div>
         <div class="project-item-details">${esc(project.org)}/${esc(project.project)}</div>
       </div>
-      <button class="project-item-delete" data-project-id="${project.id}" title="Delete project">&#x2715;</button>
+      <button class="project-item-delete" data-project-id="${esc(project.id)}" title="Delete project">&#x2715;</button>
     `;
     $projectList.appendChild(item);
   }
@@ -727,7 +736,7 @@ $projectList.addEventListener('click', async (e) => {
     if (!confirm('Delete this project? This cannot be undone.')) return;
 
     projects = projects.filter(p => p.id !== projectId);
-    await chrome.storage.sync.set({ devopsProjects: projects });
+    await chrome.storage.local.set({ devopsProjects: projects });
 
     // If deleted the current project, reset to all
     if (currentProjectId === projectId) {
@@ -794,6 +803,25 @@ async function wizardFinish() {
   const project = $inputProject.value.trim();
   const pat = $inputPat.value.trim();
 
+  // Validate org and project contain only safe characters (alphanumeric, hyphens, underscores, spaces, dots)
+  const namePattern = /^[a-zA-Z0-9\-_. ]+$/;
+  if (!namePattern.test(org)) {
+    setStatus('Organization name contains invalid characters', 'error');
+    $inputOrg.focus();
+    return;
+  }
+  if (!namePattern.test(project)) {
+    setStatus('Project name contains invalid characters', 'error');
+    $inputProject.focus();
+    return;
+  }
+  // Validate PAT is non-empty and contains only base64-safe characters
+  if (!pat || pat.length < 20 || !/^[a-zA-Z0-9+/=]+$/.test(pat)) {
+    setStatus('Personal Access Token appears invalid', 'error');
+    $inputPat.focus();
+    return;
+  }
+
   // Create a new project entry
   const newProject = {
     id: Date.now().toString(),
@@ -804,7 +832,7 @@ async function wizardFinish() {
   };
 
   projects.push(newProject);
-  await chrome.storage.sync.set({ devopsProjects: projects });
+  await chrome.storage.local.set({ devopsProjects: projects });
 
   // Check if walkthrough has been shown before
   const { walkthroughShown } = await chrome.storage.sync.get('walkthroughShown');
@@ -871,6 +899,8 @@ function updatePatLink(org) {
 function parseDevOpsUrl(raw) {
   try {
     const url = new URL(raw.trim());
+    // Only allow HTTPS URLs
+    if (url.protocol !== 'https:') return null;
     // Format: https://dev.azure.com/org/project/...
     if (url.hostname === 'dev.azure.com') {
       const parts = url.pathname.split('/').filter(Boolean);
@@ -1108,23 +1138,32 @@ async function init() {
     $btnDarkMode.innerHTML = '&#x2600;';
   }
 
-  // Load projects - support migration from old single project format
-  const data = await chrome.storage.sync.get(['devopsProjects', 'devopsConfig']);
+  // Load projects - support migration from old formats and storage locations
+  // Check local storage first (new secure location), then sync storage (legacy)
+  const localData = await chrome.storage.local.get(['devopsProjects']);
+  const syncData = await chrome.storage.sync.get(['devopsProjects', 'devopsConfig']);
 
-  if (data.devopsProjects && data.devopsProjects.length > 0) {
-    // New multi-project format
-    projects = data.devopsProjects;
+  if (localData.devopsProjects && localData.devopsProjects.length > 0) {
+    // Projects already in local storage (secure)
+    projects = localData.devopsProjects;
     transition(States.LOADING);
-  } else if (data.devopsConfig?.org && data.devopsConfig?.pat) {
+  } else if (syncData.devopsProjects && syncData.devopsProjects.length > 0) {
+    // Migrate from sync storage to local storage (contains PATs)
+    projects = syncData.devopsProjects;
+    await chrome.storage.local.set({ devopsProjects: projects });
+    await chrome.storage.sync.remove('devopsProjects');
+    transition(States.LOADING);
+  } else if (syncData.devopsConfig?.org && syncData.devopsConfig?.pat) {
     // Migrate from old single-project format
     projects = [{
       id: Date.now().toString(),
-      name: data.devopsConfig.project || data.devopsConfig.org,
-      org: data.devopsConfig.org,
-      project: data.devopsConfig.project,
-      pat: data.devopsConfig.pat
+      name: syncData.devopsConfig.project || syncData.devopsConfig.org,
+      org: syncData.devopsConfig.org,
+      project: syncData.devopsConfig.project,
+      pat: syncData.devopsConfig.pat
     }];
-    await chrome.storage.sync.set({ devopsProjects: projects });
+    await chrome.storage.local.set({ devopsProjects: projects });
+    await chrome.storage.sync.remove('devopsConfig');
     transition(States.LOADING);
   } else {
     // No projects configured
