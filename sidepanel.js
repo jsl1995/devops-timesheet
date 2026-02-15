@@ -282,7 +282,10 @@ function renderWorkItems() {
     card.className = 'wi-card' + (status ? ` status-${status}` : '');
     // Ensure work item ID is a safe integer before using in HTML
     const safeId = Number.isInteger(wi.id) ? wi.id : parseInt(wi.id, 10);
-    if (isNaN(safeId)) continue;
+    if (isNaN(safeId)) {
+      console.warn('Skipping work item with invalid ID:', wi.id);
+      continue;
+    }
     card.dataset.id = safeId;
     card.dataset.projectId = wi.projectId;
     const priorityLabel = wi.priority && Number.isInteger(wi.priority) ? `P${wi.priority}` : '-';
@@ -813,7 +816,7 @@ async function wizardFinish() {
     return;
   }
   // Validate PAT is non-empty and contains only base64-safe characters
-  if (!pat || !/^[a-zA-Z0-9+/=]+$/.test(pat)) {
+  if (!pat || pat.length < 20 || !/^[a-zA-Z0-9+/=]+$/.test(pat)) {
     setStatus('Personal Access Token appears invalid', 'error');
     $inputPat.focus();
     return;
