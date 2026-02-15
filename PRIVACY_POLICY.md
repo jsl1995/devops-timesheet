@@ -80,7 +80,7 @@ We may update this privacy policy from time to time. Changes will be reflected i
 
 If you have questions about this privacy policy or the extension's data practices, please contact:
 
-**Email:** [your-email@example.com]
+**Email:** [joellockey13@googlemail.com]
 
 **GitHub:** [https://github.com/jsl1995/devops-timesheet](https://github.com/jsl1995/devops-timesheet)
 
